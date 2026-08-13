@@ -8,6 +8,7 @@
 // ============================================================
 
 const firebaseConfig = {
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
   apiKey: "AIzaSyCacW4VdF1mgrMp1p2j3D4Ai2Az5TxCdlU",
   authDomain: "suhanee-papergen.firebaseapp.com",
   projectId: "suhanee-papergen",
@@ -15,6 +16,7 @@ const firebaseConfig = {
   messagingSenderId: "1098056725129",
   appId: "1:1098056725129:web:1e3b458e2518bba1ad4c58",
   measurementId: "G-B6KMX3L61E"
+};
 };
 
 // Initialize Firebase (using the "compat" SDK loaded via <script> tags in the HTML files)
