@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// ============================================================
+// FIRESTORE SECURITY RULES
+// ============================================================
+// This app is meant for YOU (and maybe a co-parent/tutor), not the
+// public. Signing up is open in the app's UI, but these rules make
+// sure only specific approved accounts can actually read or write
+// any data — so even if someone else finds your GitHub Pages URL
+// and creates a login, they can't see or touch your question bank.
+//
+// HOW TO USE:
+// 1. Deploy the app once and sign up with your own email/password.
+// 2. In the Firebase console -> Authentication -> Users tab, copy
+//    your account's "User UID".
+// 3. Paste it into the allowedUsers() list below (add more UIDs for
+//    a spouse/tutor if needed).
+// 4. Paste this whole file into Firebase console -> Firestore
+//    Database -> Rules tab, and click "Publish".
+// ============================================================
+
+function isAllowedUser() {
+  return request.auth != null && request.auth.uid in [
+    "PASTE_YOUR_USER_UID_HERE"
+    // , "ANOTHER_ALLOWED_UID_HERE"
+  ];
+}
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /taxonomy/{docId} {
+      allow read, write: if isAllowedUser();
+    }
+
+    match /questions/{questionId} {
+      allow read, write: if isAllowedUser();
+    }
+  }
+}

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Exam Prep Bank</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <div class="app-shell">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand-small">
+        <span class="brand-mark">§</span>
+        <span>Exam Prep Bank</span>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn active" data-view="add-question">Add question</button>
+        <button class="nav-btn" data-view="question-bank">Question bank</button>
+        <button class="nav-btn" data-view="generate-paper">Generate paper</button>
+        <button class="nav-btn" data-view="manage-categories">Manage categories</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <p id="user-email" class="user-email"></p>
+        <button id="logout-btn" class="btn-ghost">Sign out</button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="content">
+
+      <!-- ================= ADD QUESTION ================= -->
+      <section id="view-add-question" class="view">
+        <h2>Add a question</h2>
+        <p class="hint">Fill this out once per question. It gets saved straight into your bank.</p>
+
+        <form id="question-form" class="card-form">
+
+          <div class="grid-4">
+            <div class="field">
+              <label>Board</label>
+              <select id="q-board" class="taxonomy-select" data-level="board"></select>
+              <input type="text" id="q-board-new" class="hidden new-input" placeholder="New board name" />
+            </div>
+            <div class="field">
+              <label>Grade</label>
+              <select id="q-grade" class="taxonomy-select" data-level="grade" disabled></select>
+              <input type="text" id="q-grade-new" class="hidden new-input" placeholder="New grade name" />
+            </div>
+            <div class="field">
+              <label>Subject</label>
+              <select id="q-subject" class="taxonomy-select" data-level="subject" disabled></select>
+              <input type="text" id="q-subject-new" class="hidden new-input" placeholder="New subject name" />
+            </div>
+            <div class="field">
+              <label>Chapter</label>
+              <select id="q-chapter" class="taxonomy-select" data-level="chapter" disabled></select>
+              <input type="text" id="q-chapter-new" class="hidden new-input" placeholder="New chapter name" />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="field">
+              <label>Topic</label>
+              <select id="q-topic" class="taxonomy-select" data-level="topic" disabled></select>
+              <input type="text" id="q-topic-new" class="hidden new-input" placeholder="New topic name" />
+            </div>
+            <div class="field">
+              <label>Question type</label>
+              <select id="q-type">
+                <option value="mcq">Multiple choice</option>
+                <option value="subjective">Subjective / long answer</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Question text</label>
+            <textarea id="q-text" rows="3" required placeholder="Type the question here..."></textarea>
+          </div>
+
+          <!-- MCQ-only options -->
+          <div id="mcq-options" class="field">
+            <label>Options (mark the correct one)</label>
+            <div class="option-row">
+              <input type="radio" name="correct-option" value="0" checked />
+              <input type="text" class="option-text" placeholder="Option A" />
+            </div>
+            <div class="option-row">
+              <input type="radio" name="correct-option" value="1" />
+              <input type="text" class="option-text" placeholder="Option B" />
+            </div>
+            <div class="option-row">
+              <input type="radio" name="correct-option" value="2" />
+              <input type="text" class="option-text" placeholder="Option C" />
+            </div>
+            <div class="option-row">
+              <input type="radio" name="correct-option" value="3" />
+              <input type="text" class="option-text" placeholder="Option D" />
+            </div>
+          </div>
+
+          <!-- Subjective-only answer key -->
+          <div id="subjective-answer" class="field hidden">
+            <label>Model answer / key points (for your reference, kept private with the question)</label>
+            <textarea id="q-answer-text" rows="3" placeholder="Answer or key points..."></textarea>
+          </div>
+
+          <div class="grid-3">
+            <div class="field">
+              <label>Marks</label>
+              <input type="number" id="q-marks" min="1" value="1" required />
+            </div>
+            <div class="field">
+              <label>Difficulty</label>
+              <select id="q-difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Image / diagram (optional)</label>
+              <input type="file" id="q-image" accept="image/*" />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Save question</button>
+            <span id="save-status" class="save-status"></span>
+          </div>
+        </form>
+      </section>
+
+      <!-- ================= QUESTION BANK ================= -->
+      <section id="view-question-bank" class="view hidden">
+        <h2>Question bank</h2>
+        <p class="hint">Browse, filter, edit, or delete questions you've added.</p>
+
+        <div class="filter-bar" id="bank-filter-bar"></div>
+
+        <div id="bank-count" class="hint"></div>
+        <div id="bank-list" class="question-list"></div>
+      </section>
+
+      <!-- ================= GENERATE PAPER ================= -->
+      <section id="view-generate-paper" class="view hidden">
+        <h2>Generate a paper</h2>
+        <p class="hint">Pick your scope, set how many questions you want, and generate a random paper.</p>
+
+        <div class="card-form" id="paper-filter-bar"></div>
+
+        <div class="grid-3">
+          <div class="field">
+            <label>Number of MCQs</label>
+            <input type="number" id="p-num-mcq" min="0" value="5" />
+          </div>
+          <div class="field">
+            <label>Number of subjective</label>
+            <input type="number" id="p-num-subjective" min="0" value="5" />
+          </div>
+          <div class="field">
+            <label>&nbsp;</label>
+            <button id="generate-btn" class="btn-primary">Generate paper</button>
+          </div>
+        </div>
+
+        <div id="paper-output"></div>
+      </section>
+
+      <!-- ================= MANAGE CATEGORIES ================= -->
+      <section id="view-manage-categories" class="view hidden">
+        <h2>Manage categories</h2>
+        <p class="hint">These are the Board / Grade / Subject / Chapter / Topic values available when adding questions. You can also just add new ones inline from the "Add question" form.</p>
+        <div id="taxonomy-tree" class="taxonomy-tree"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/taxonomy.js"></script>
+  <script src="js/questions.js"></script>
+  <script src="js/paper.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
