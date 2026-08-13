@@ -3,6 +3,12 @@
 // The random paper generator: pick a scope (board/grade/subject/...),
 // how many MCQs + subjective questions, and produce a shuffled,
 // printable paper with a hideable answer key.
+//
+// Live counts: whenever Board/Grade/Subject is chosen, we fetch every
+// question in that scope ONCE (subjectPool) and then compute all the
+// per-chapter / per-topic / per-difficulty counts from that in-memory
+// list — so ticking checkboxes updates counts instantly with no extra
+// Firestore reads.
 // ============================================================
 
 let paperFilters = { board: null, grade: null, subject: null, chapters: [], topics: [], difficulties: [] };
@@ -43,7 +49,32 @@ function initPaperGeneratorView() {
   });
 }
 
-// ---------- PAPER FILTER BAR (Board/Grade/Subject single-select, everything else multi-select) ----------
+// Fetches every question in a Board/Grade/Subject scope — the only
+// server-side filtering we do; everything else is computed client-side.
+async function fetchSubjectPool(board, grade, subject) {
+  let query = QUESTIONS_COL();
+  if (board) query = query.where("board", "==", board);
+  if (grade) query = query.where("grade", "==", grade);
+  if (subject) query = query.where("subject", "==", subject);
+  const snap = await query.get();
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+async function loadQuestionsForPaper(filters) {
+  let results = await fetchSubjectPool(filters.board, filters.grade, filters.subject);
+  if (filters.chapters && filters.chapters.length) {
+    results = results.filter((q) => filters.chapters.includes(q.chapter));
+  }
+  if (filters.topics && filters.topics.length) {
+    results = results.filter((q) => q.topic && filters.topics.includes(q.topic));
+  }
+  if (filters.difficulties && filters.difficulties.length) {
+    results = results.filter((q) => filters.difficulties.includes(q.difficulty));
+  }
+  return results;
+}
+
+// ---------- PAPER FILTER BAR (Board/Grade/Subject single-select, everything else multi-select with live counts) ----------
 function renderPaperFilterBar(containerEl, onChange) {
   containerEl.innerHTML = `
     <div class="grid-3">
@@ -61,11 +92,7 @@ function renderPaperFilterBar(containerEl, onChange) {
     </div>
     <div class="field">
       <label>Difficulty <span class="hint-inline">(leave all unticked to include every difficulty)</span></label>
-      <div class="checkbox-grid pf-difficulty">
-        <label class="checkbox-inline"><input type="checkbox" value="easy" /> Easy</label>
-        <label class="checkbox-inline"><input type="checkbox" value="medium" /> Medium</label>
-        <label class="checkbox-inline"><input type="checkbox" value="hard" /> Hard</label>
-      </div>
+      <div class="checkbox-grid pf-difficulty"></div>
     </div>
     <div class="field">
       <button type="button" id="show-count-btn" class="btn-ghost btn-small">Show count for this selection</button>
@@ -82,6 +109,8 @@ function renderPaperFilterBar(containerEl, onChange) {
     difficulty: containerEl.querySelector(".pf-difficulty")
   };
 
+  let subjectPool = [];
+
   function fillSelectSimple(select, values, placeholder) {
     select.innerHTML = `<option value="">${placeholder}</option>`;
     values.forEach((v) => {
@@ -96,30 +125,31 @@ function renderPaperFilterBar(containerEl, onChange) {
     return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map((cb) => cb.value);
   }
 
-  function fillCheckboxGrid(container, values, emptyMessage) {
+  // Renders a checkbox list with a live "(n)" count after each label
+  function fillCheckboxGridWithCounts(container, values, counts, emptyMessage) {
     if (values.length === 0) {
       container.innerHTML = `<p class="hint">${emptyMessage}</p>`;
       return;
     }
     container.innerHTML = values
-      .map((v) => `<label class="checkbox-inline"><input type="checkbox" value="${escapeHtml(v)}" /> ${escapeHtml(v)}</label>`)
+      .map((v) => {
+        const count = counts[v] || 0;
+        return `<label class="checkbox-inline"><input type="checkbox" value="${escapeHtml(v)}" /> ${escapeHtml(v)} <span class="count-badge">(${count})</span></label>`;
+      })
       .join("");
   }
 
-  function rebuildTopics() {
-    const selectedChapters = checkedValues(els.chapters);
-    const chaptersToUse = selectedChapters.length ? selectedChapters : getChapters(els.board.value, els.grade.value, els.subject.value);
-    const topicSet = new Set();
-    chaptersToUse.forEach((ch) => {
-      getTopics(els.board.value, els.grade.value, els.subject.value, ch).forEach((t) => topicSet.add(t));
-    });
-    fillCheckboxGrid(els.topics, Array.from(topicSet).sort(), "No topics yet for this selection.");
-    els.topics.querySelectorAll('input[type="checkbox"]').forEach((cb) => cb.addEventListener("change", emit));
+  async function refreshSubjectPool() {
+    subjectPool = await fetchSubjectPool(els.board.value || null, els.grade.value || null, els.subject.value || null);
   }
 
   function rebuildChapters() {
     const chapters = els.subject.value ? getChapters(els.board.value, els.grade.value, els.subject.value) : [];
-    fillCheckboxGrid(els.chapters, chapters, "Choose a subject first.");
+    const counts = {};
+    chapters.forEach((ch) => {
+      counts[ch] = subjectPool.filter((q) => q.chapter === ch).length;
+    });
+    fillCheckboxGridWithCounts(els.chapters, chapters, counts, "Choose a subject first.");
     els.chapters.querySelectorAll('input[type="checkbox"]').forEach((cb) =>
       cb.addEventListener("change", () => {
         rebuildTopics();
@@ -127,6 +157,56 @@ function renderPaperFilterBar(containerEl, onChange) {
       })
     );
     rebuildTopics();
+  }
+
+  function rebuildTopics() {
+    const selectedChapters = checkedValues(els.chapters);
+    const chaptersToUse = selectedChapters.length ? selectedChapters : getChapters(els.board.value, els.grade.value, els.subject.value);
+    const poolForChapters = subjectPool.filter((q) => chaptersToUse.includes(q.chapter));
+
+    const topicSet = new Set();
+    chaptersToUse.forEach((ch) => {
+      getTopics(els.board.value, els.grade.value, els.subject.value, ch).forEach((t) => topicSet.add(t));
+    });
+    const topics = Array.from(topicSet).sort();
+    const counts = {};
+    topics.forEach((t) => {
+      counts[t] = poolForChapters.filter((q) => q.topic === t).length;
+    });
+    fillCheckboxGridWithCounts(els.topics, topics, counts, "No topics yet for this selection.");
+    els.topics.querySelectorAll('input[type="checkbox"]').forEach((cb) =>
+      cb.addEventListener("change", () => {
+        rebuildDifficulty();
+        emit();
+      })
+    );
+    rebuildDifficulty();
+  }
+
+  // The pool implied by whatever chapters/topics are currently ticked —
+  // used to compute how many Easy/Medium/Hard questions are in that scope.
+  function scopedPool() {
+    const selectedChapters = checkedValues(els.chapters);
+    const selectedTopics = checkedValues(els.topics);
+    let pool = subjectPool;
+    if (selectedChapters.length) pool = pool.filter((q) => selectedChapters.includes(q.chapter));
+    if (selectedTopics.length) pool = pool.filter((q) => q.topic && selectedTopics.includes(q.topic));
+    return pool;
+  }
+
+  function rebuildDifficulty() {
+    const pool = scopedPool();
+    const counts = { easy: 0, medium: 0, hard: 0 };
+    pool.forEach((q) => {
+      if (counts[q.difficulty] !== undefined) counts[q.difficulty]++;
+    });
+    els.difficulty.innerHTML = ["easy", "medium", "hard"]
+      .map((level) => {
+        const label = level.charAt(0).toUpperCase() + level.slice(1);
+        return `<label class="checkbox-inline"><input type="checkbox" value="${level}" /> ${label} <span class="count-badge">(${counts[level]})</span></label>`;
+      })
+      .join("");
+    els.difficulty.querySelectorAll('input[type="checkbox"]').forEach((cb) => cb.addEventListener("change", emit));
   }
 
   function emit() {
@@ -151,22 +231,24 @@ function renderPaperFilterBar(containerEl, onChange) {
   fillSelectSimple(els.grade, [], "All grades");
   fillSelectSimple(els.subject, [], "All subjects");
 
-  els.board.addEventListener("change", () => {
+  els.board.addEventListener("change", async () => {
     fillSelectSimple(els.grade, els.board.value ? getGrades(els.board.value) : [], "All grades");
     fillSelectSimple(els.subject, [], "All subjects");
+    await refreshSubjectPool();
     rebuildChapters();
     emit();
   });
-  els.grade.addEventListener("change", () => {
+  els.grade.addEventListener("change", async () => {
     fillSelectSimple(els.subject, els.grade.value ? getSubjects(els.board.value, els.grade.value) : [], "All subjects");
+    await refreshSubjectPool();
     rebuildChapters();
     emit();
   });
-  els.subject.addEventListener("change", () => {
+  els.subject.addEventListener("change", async () => {
+    await refreshSubjectPool();
     rebuildChapters();
     emit();
   });
-  els.difficulty.querySelectorAll('input[type="checkbox"]').forEach((cb) => cb.addEventListener("change", emit));
 
   const countBtn = containerEl.querySelector("#show-count-btn");
   const countResult = containerEl.querySelector("#pf-count-result");
@@ -183,32 +265,11 @@ function renderPaperFilterBar(containerEl, onChange) {
     if (subjLabel) subjLabel.textContent = `Number of subjective (${subjCount} available)`;
   });
 
-  rebuildChapters();
-  emit();
-}
-
-// Fetches by Board/Grade/Subject on the server (cheap equality filters), then
-// narrows by chapter/topic/difficulty on the client — simplest way to support
-// multi-select without needing Firestore composite indexes.
-async function loadQuestionsForPaper(filters) {
-  let query = QUESTIONS_COL();
-  if (filters.board) query = query.where("board", "==", filters.board);
-  if (filters.grade) query = query.where("grade", "==", filters.grade);
-  if (filters.subject) query = query.where("subject", "==", filters.subject);
-
-  const snap = await query.get();
-  let results = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-  if (filters.chapters && filters.chapters.length) {
-    results = results.filter((q) => filters.chapters.includes(q.chapter));
-  }
-  if (filters.topics && filters.topics.length) {
-    results = results.filter((q) => q.topic && filters.topics.includes(q.topic));
-  }
-  if (filters.difficulties && filters.difficulties.length) {
-    results = results.filter((q) => filters.difficulties.includes(q.difficulty));
-  }
-  return results;
+  (async () => {
+    await refreshSubjectPool();
+    rebuildChapters();
+    emit();
+  })();
 }
 
 // Builds a clean, nested "Chapter: its topics" summary for the paper header,
@@ -234,7 +295,6 @@ function buildScopeSummary() {
     const line = lines.join(" &nbsp;•&nbsp; ") + (extra > 0 ? ` &nbsp;+${extra} more chapter${extra > 1 ? "s" : ""}` : "");
     scopeHtml += `<p class="scope-line">${line}</p>`;
   } else if (topics) {
-    // Topics chosen without narrowing to specific chapters (rare) — just list them flat
     scopeHtml += `<p class="scope-line">Topics: ${topics.map(escapeHtml).join(", ")}</p>`;
   }
 
