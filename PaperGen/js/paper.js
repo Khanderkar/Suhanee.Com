@@ -211,6 +211,40 @@ async function loadQuestionsForPaper(filters) {
   return results;
 }
 
+// Builds a clean, nested "Chapter: its topics" summary for the paper header,
+// instead of two disconnected flat lists. Truncates long selections so the
+// header doesn't sprawl.
+function buildScopeSummary() {
+  const chapters = paperFilters.chapters && paperFilters.chapters.length ? paperFilters.chapters : null;
+  const topics = paperFilters.topics && paperFilters.topics.length ? paperFilters.topics : null;
+  const difficulties = paperFilters.difficulties && paperFilters.difficulties.length ? paperFilters.difficulties : null;
+
+  let scopeHtml = "";
+
+  if (chapters) {
+    const MAX_SHOWN = 4;
+    const lines = chapters.slice(0, MAX_SHOWN).map((ch) => {
+      const chapterTopics = getTopics(paperFilters.board, paperFilters.grade, paperFilters.subject, ch);
+      const selectedForThisChapter = topics ? chapterTopics.filter((t) => topics.includes(t)) : [];
+      return selectedForThisChapter.length
+        ? `<strong>${escapeHtml(ch)}</strong> (${selectedForThisChapter.map(escapeHtml).join(", ")})`
+        : `<strong>${escapeHtml(ch)}</strong>`;
+    });
+    const extra = chapters.length - MAX_SHOWN;
+    const line = lines.join(" &nbsp;•&nbsp; ") + (extra > 0 ? ` &nbsp;+${extra} more chapter${extra > 1 ? "s" : ""}` : "");
+    scopeHtml += `<p class="scope-line">${line}</p>`;
+  } else if (topics) {
+    // Topics chosen without narrowing to specific chapters (rare) — just list them flat
+    scopeHtml += `<p class="scope-line">Topics: ${topics.map(escapeHtml).join(", ")}</p>`;
+  }
+
+  if (difficulties) {
+    scopeHtml += `<p class="scope-line">Difficulty: ${difficulties.map(escapeHtml).join(", ")}</p>`;
+  }
+
+  return scopeHtml;
+}
+
 function sampleRandom(pool, count) {
   const shuffled = pool.slice().sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
@@ -239,9 +273,7 @@ function renderPaper(outputEl, mcqQuestions, subjectiveQuestions) {
             .map(escapeHtml)
             .join(" · ") || "Mixed scope"}
         </p>
-        ${paperFilters.chapters && paperFilters.chapters.length ? `<p class="scope-line">Chapters: ${paperFilters.chapters.map(escapeHtml).join(", ")}</p>` : ""}
-        ${paperFilters.topics && paperFilters.topics.length ? `<p class="scope-line">Topics: ${paperFilters.topics.map(escapeHtml).join(", ")}</p>` : ""}
-        ${paperFilters.difficulties && paperFilters.difficulties.length ? `<p class="scope-line">Difficulty: ${paperFilters.difficulties.map(escapeHtml).join(", ")}</p>` : ""}
+        ${buildScopeSummary()}
         <p>Total marks: ${totalMarks}</p>
       </div>
 
@@ -257,7 +289,10 @@ function renderPaper(outputEl, mcqQuestions, subjectiveQuestions) {
           .map(
             (q, i) => `
           <li>
-            <div class="rich-content question-inline"><span class="marks-tag">[${q.marks}]</span> ${q.questionText || ""}</div>
+            <div class="question-row">
+              <div class="rich-content question-inline">${q.questionText || ""}</div>
+              <span class="marks-tag">[${q.marks}]</span>
+            </div>
             ${q.imageURL ? `<img class="q-card-image" src="${q.imageURL}" alt="" />` : ""}
             <ol type="A" class="mcq-options">
               ${q.options.map((o, oi) => `<li class="${oi === q.correctOption ? "answer-highlight" : ""}">${escapeHtml(o)}</li>`).join("")}
@@ -273,7 +308,10 @@ function renderPaper(outputEl, mcqQuestions, subjectiveQuestions) {
           .map(
             (q) => `
           <li>
-            <div class="rich-content question-inline"><span class="marks-tag">[${q.marks}]</span> ${q.questionText || ""}</div>
+            <div class="question-row">
+              <div class="rich-content question-inline">${q.questionText || ""}</div>
+              <span class="marks-tag">[${q.marks}]</span>
+            </div>
             ${q.imageURL ? `<img class="q-card-image" src="${q.imageURL}" alt="" />` : ""}
             <div class="answer-highlight answer-only"><em>Answer key:</em> <span class="rich-content">${q.answerText || "—"}</span></div>
           </li>`
