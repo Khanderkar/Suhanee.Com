@@ -312,6 +312,7 @@ function renderPaper(outputEl, mcqQuestions, subjectiveQuestions) {
     <div class="paper-toolbar no-print">
       <button id="regen-btn" class="btn-ghost">Shuffle again</button>
       <label class="toggle-label"><input type="checkbox" id="show-answers" /> Show answer key</label>
+      <label class="toggle-label"><input type="checkbox" id="edit-mode-toggle" /> Edit questions</label>
       <button id="print-btn" class="btn-primary">Print / Save as PDF</button>
     </div>
 
@@ -342,7 +343,10 @@ function renderPaper(outputEl, mcqQuestions, subjectiveQuestions) {
           <li>
             <div class="question-row">
               <div class="rich-content question-inline">${q.questionText || ""}</div>
-              <span class="marks-tag">[${q.marks}]</span>
+              <span class="question-row-right">
+                <span class="marks-tag">[${q.marks}]</span>
+                <button type="button" class="edit-q-inline hidden no-print" data-type="mcq" data-index="${i}" title="Edit this question">✏️</button>
+              </span>
             </div>
             ${q.imageURL ? `<img class="q-card-image" src="${q.imageURL}" alt="" />` : ""}
             <ol type="A" class="mcq-options">
@@ -357,11 +361,14 @@ function renderPaper(outputEl, mcqQuestions, subjectiveQuestions) {
       <ol class="paper-questions" start="${mcqQuestions.length + 1}">
         ${subjectiveQuestions
           .map(
-            (q) => `
+            (q, i) => `
           <li>
             <div class="question-row">
               <div class="rich-content question-inline">${q.questionText || ""}</div>
-              <span class="marks-tag">[${q.marks}]</span>
+              <span class="question-row-right">
+                <span class="marks-tag">[${q.marks}]</span>
+                <button type="button" class="edit-q-inline hidden no-print" data-type="subjective" data-index="${i}" title="Edit this question">✏️</button>
+              </span>
             </div>
             ${q.imageURL ? `<img class="q-card-image" src="${q.imageURL}" alt="" />` : ""}
             <div class="answer-highlight answer-only"><em>Answer key:</em> <span class="rich-content">${q.answerText || "—"}</span></div>
@@ -379,6 +386,21 @@ function renderPaper(outputEl, mcqQuestions, subjectiveQuestions) {
   showAnswersCheckbox.addEventListener("change", () => {
     paperWrap.querySelectorAll(".answer-highlight").forEach((el) => {
       el.classList.toggle("answer-visible", showAnswersCheckbox.checked);
+    });
+  });
+
+  const editModeToggle = paperWrap.querySelector("#edit-mode-toggle");
+  editModeToggle.addEventListener("change", () => {
+    paperWrap.querySelectorAll(".edit-q-inline").forEach((btn) => {
+      btn.classList.toggle("hidden", !editModeToggle.checked);
+    });
+  });
+
+  paperWrap.querySelectorAll(".edit-q-inline").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const source = btn.dataset.type === "mcq" ? mcqQuestions : subjectiveQuestions;
+      const q = source[Number(btn.dataset.index)];
+      if (q) startEditQuestion(q);
     });
   });
 
