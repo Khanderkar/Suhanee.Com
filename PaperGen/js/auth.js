@@ -2,6 +2,21 @@
 // AUTH.JS - handles login, signup, logout, and route protection
 // ============================================================
 
+// ---- GOOGLE SIGN-IN ----
+const googleBtn = document.getElementById("google-signin-btn");
+if (googleBtn) {
+  googleBtn.addEventListener("click", async () => {
+    clearError();
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      await auth.signInWithPopup(provider);
+      window.location.href = "dashboard.html";
+    } catch (err) {
+      showError(friendlyAuthError(err));
+    }
+  });
+}
+
 // ---- LOGIN PAGE LOGIC (only runs if these elements exist on the page) ----
 const loginForm = document.getElementById("login-form");
 const signupForm = document.getElementById("signup-form");
