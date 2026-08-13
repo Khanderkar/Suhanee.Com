@@ -563,6 +563,21 @@ form input:focus, form select:focus, form textarea:focus {
 }
 .rte-editable ul, .rte-editable ol { margin: 4px 0; padding-left: 22px; }
 
+/* Fraction inserted via the toolbar's "a/b" button */
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 3px;
+  font-size: 0.95em;
+  line-height: 1;
+}
+.frac .num { padding: 0 3px 2px; border-bottom: 1.4px solid currentColor; }
+.frac .denom { padding: 2px 3px 0; }
+
+.rte-frac-btn { font-family: var(--serif); font-style: italic; }
+
 /* How saved rich content renders elsewhere (question bank cards, printed paper) */
 .rich-content p { margin: 0 0 6px; }
 .rich-content ul, .rich-content ol { margin: 4px 0 8px; padding-left: 22px; }
