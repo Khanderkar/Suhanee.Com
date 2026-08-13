@@ -24,6 +24,8 @@ function initAddQuestionForm() {
     mcqBlock.classList.toggle("hidden", !isMcq);
     subjectiveBlock.classList.toggle("hidden", isMcq);
   });
+  // Sync immediately in case the browser restored a previous selection on reload
+  typeSelect.dispatchEvent(new Event("change"));
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
