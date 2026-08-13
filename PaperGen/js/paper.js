@@ -53,11 +53,11 @@ function renderPaperFilterBar(containerEl, onChange) {
     </div>
     <div class="field">
       <label>Chapters <span class="hint-inline">(leave all unticked to include every chapter)</span></label>
-      <div class="checkbox-grid pf-chapters"><p class="hint">Choose a subject first.</p></div>
+      <div class="checkbox-grid checkbox-grid-vertical pf-chapters"><p class="hint">Choose a subject first.</p></div>
     </div>
     <div class="field">
       <label>Topics <span class="hint-inline">(leave all unticked to include every topic)</span></label>
-      <div class="checkbox-grid pf-topics"><p class="hint">Choose a subject first.</p></div>
+      <div class="checkbox-grid checkbox-grid-vertical pf-topics"><p class="hint">Choose a subject first.</p></div>
     </div>
     <div class="field">
       <label>Difficulty <span class="hint-inline">(leave all unticked to include every difficulty)</span></label>
@@ -66,6 +66,10 @@ function renderPaperFilterBar(containerEl, onChange) {
         <label class="checkbox-inline"><input type="checkbox" value="medium" /> Medium</label>
         <label class="checkbox-inline"><input type="checkbox" value="hard" /> Hard</label>
       </div>
+    </div>
+    <div class="field">
+      <button type="button" id="show-count-btn" class="btn-ghost btn-small">Show count for this selection</button>
+      <span id="pf-count-result" class="hint"></span>
     </div>
   `;
 
@@ -126,6 +130,13 @@ function renderPaperFilterBar(containerEl, onChange) {
   }
 
   function emit() {
+    const countResult = containerEl.querySelector("#pf-count-result");
+    if (countResult) countResult.textContent = "";
+    const mcqLabel = document.getElementById("label-num-mcq");
+    const subjLabel = document.getElementById("label-num-subjective");
+    if (mcqLabel) mcqLabel.textContent = "Number of MCQs";
+    if (subjLabel) subjLabel.textContent = "Number of subjective";
+
     onChange({
       board: els.board.value || null,
       grade: els.grade.value || null,
@@ -156,6 +167,21 @@ function renderPaperFilterBar(containerEl, onChange) {
     emit();
   });
   els.difficulty.querySelectorAll('input[type="checkbox"]').forEach((cb) => cb.addEventListener("change", emit));
+
+  const countBtn = containerEl.querySelector("#show-count-btn");
+  const countResult = containerEl.querySelector("#pf-count-result");
+  countBtn.addEventListener("click", async () => {
+    countResult.textContent = "Counting...";
+    const matching = await loadQuestionsForPaper(paperFilters);
+    const mcqCount = matching.filter((q) => q.type === "mcq").length;
+    const subjCount = matching.filter((q) => q.type === "subjective").length;
+    countResult.textContent = `${matching.length} question(s) match this selection.`;
+
+    const mcqLabel = document.getElementById("label-num-mcq");
+    const subjLabel = document.getElementById("label-num-subjective");
+    if (mcqLabel) mcqLabel.textContent = `Number of MCQs (${mcqCount} available)`;
+    if (subjLabel) subjLabel.textContent = `Number of subjective (${subjCount} available)`;
+  });
 
   rebuildChapters();
   emit();
