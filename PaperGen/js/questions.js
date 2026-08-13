@@ -103,7 +103,8 @@ async function performSave(mcqBlock, typeSelect) {
       type,
       questionText,
       marks,
-      difficulty
+      difficulty,
+      ref: document.getElementById("q-ref").value.trim() || null
     };
 
     const wasEditing = !!editingQuestionId;
@@ -249,6 +250,7 @@ function startEditQuestion(q) {
   qTextEl.dataset.required = (!q.questionText && q.imageURL) ? "false" : "true";
   document.getElementById("q-marks").value = q.marks || 1;
   document.getElementById("q-difficulty").value = q.difficulty || "medium";
+  document.getElementById("q-ref").value = q.ref || "";
 
   const mcqBlock = document.getElementById("mcq-options");
   if (q.type === "mcq") {
@@ -395,6 +397,7 @@ function renderQuestionList(listEl, questions) {
         <span class="tag tag-muted">${escapeHtml(q.chapter)}${q.topic ? " · " + escapeHtml(q.topic) : ""}</span>
         <span class="tag tag-type">${q.type === "mcq" ? "MCQ" : "Subjective"}</span>
         <span class="tag tag-marks">${q.marks} mark(s)</span>
+        ${q.ref ? `<span class="tag tag-ref">Ref: ${escapeHtml(q.ref)}</span>` : ""}
       </div>
       <div class="q-card-text rich-content">${q.questionText || ""}</div>
       ${q.imageURL ? `<img class="q-card-image" src="${q.imageURL}" alt="question diagram" />` : ""}
