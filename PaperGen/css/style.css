@@ -308,6 +308,7 @@ form input:focus, form select:focus, form textarea:focus {
 .tag-muted { color: var(--text-muted); }
 .tag-type { background: var(--ink); color: #fff; }
 .tag-marks { background: var(--gold-soft); color: #6B5311; }
+.tag-ref { background: #E4E8F1; color: var(--ink-light); font-style: italic; }
 
 .q-card-text { font-size: 15px; margin: 0 0 10px; line-height: 1.5; }
 .q-card-image { max-width: 260px; display: block; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 10px; }
