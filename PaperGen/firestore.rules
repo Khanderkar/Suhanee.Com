@@ -3,31 +3,40 @@ rules_version = '2';
 // ============================================================
 // FIRESTORE SECURITY RULES
 // ============================================================
-// This app is meant for YOU (and maybe a co-parent/tutor), not the
-// public. Signing up is open in the app's UI, but these rules make
-// sure only specific approved accounts can actually read or write
-// any data — so even if someone else finds your GitHub Pages URL
-// and creates a login, they can't see or touch your question bank.
+// Instead of listing UIDs directly in this file (which is visible
+// to anyone browsing your public GitHub repo), this checks a
+// Firestore collection called "authorizedUsers". You add yourself
+// (and anyone else) to that collection directly through the Firebase
+// console's Data tab — never through code — so nothing personal
+// ever appears in your source code.
 //
-// HOW TO USE:
-// 1. Deploy the app once and sign up with your own email/password.
-// 2. In the Firebase console -> Authentication -> Users tab, copy
-//    your account's "User UID".
-// 3. Paste it into the allowedUsers() list below (add more UIDs for
-//    a spouse/tutor if needed).
-// 4. Paste this whole file into Firebase console -> Firestore
-//    Database -> Rules tab, and click "Publish".
+// HOW TO AUTHORIZE YOURSELF:
+// 1. Sign into the app once (so your account exists in Firebase Auth).
+// 2. Firebase console -> Authentication -> Users tab -> copy your User UID.
+// 3. Firebase console -> Firestore Database -> Data tab.
+// 4. Click "Start collection" (or the "+" next to Data) -> Collection ID: authorizedUsers
+// 5. Document ID: paste your UID exactly.
+// 6. Add any field, e.g. name "allowed", type boolean, value true. Save.
+// 7. Paste this whole file into Firestore Database -> Rules tab -> Publish.
+//
+// To authorize someone else later, repeat steps 3-6 with their UID.
+// To revoke someone, just delete their document from authorizedUsers.
 // ============================================================
 
 function isAllowedUser() {
-  return request.auth != null && request.auth.uid in [
-    "PASTE_YOUR_USER_UID_HERE"
-    // , "ANOTHER_ALLOWED_UID_HERE"
-  ];
+  return request.auth != null &&
+    exists(/databases/$(database)/documents/authorizedUsers/$(request.auth.uid));
 }
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Each user can only read their OWN entry, just to check they're authorized.
+    // Nobody can write here from the app - only you, via the Firebase console.
+    match /authorizedUsers/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
 
     match /taxonomy/{docId} {
       allow read, write: if isAllowedUser();

@@ -27,16 +27,20 @@ A private question repository for building practice papers by **Board → Grade 
 
 ## 5. Lock the app down to just you
 
-By default, "production mode" blocks everyone — we need to explicitly allow your account.
+By default, "production mode" blocks everyone — we need to explicitly allow your account. Since your GitHub repo is public, we keep your identity **out of the code entirely** — the allow-list lives inside Firestore itself, managed only through the Firebase console (never through a file that gets pushed to GitHub).
 
-1. **Open the app locally first** (see step 6) and use the **"Create an account"** link to sign up with your own email/password. This creates your user, but rules aren't set yet so it may fail — that's expected, continue to the next step first if signup doesn't go through, then retry after step 5.3.
+1. **Open the app locally first** (see step 6) and use the **"Create an account"** or **"Sign in with Google"** option to sign in with your own account. This creates your user in Firebase Auth.
 2. In Firebase console: **Build → Authentication → Users** tab, find your account, and copy its **User UID**.
-3. Open `firestore.rules` and `storage.rules` in this project, and replace `PASTE_YOUR_USER_UID_HERE` with your actual UID (keep the quotes).
-4. In Firebase console: **Firestore Database → Rules** tab → paste in the entire contents of `firestore.rules` → click **Publish**.
-5. In Firebase console: **Storage → Rules** tab → paste in the entire contents of `storage.rules` → click **Publish**.
-6. Now sign up / log in again from the app — it should work.
+3. In Firebase console: **Build → Firestore Database → Data** tab.
+4. Click **Start collection** (or the **+** next to "Data"). Collection ID: `authorizedUsers`.
+5. For the first document, set **Document ID** to your UID exactly (paste it in). Add any field — e.g. name it `allowed`, type Boolean, value `true`. Click **Save**.
+6. In Firebase console: **Firestore Database → Rules** tab → paste in the entire contents of `firestore.rules` from this project → click **Publish**.
+7. In Firebase console: **Storage → Rules** tab → paste in the entire contents of `storage.rules` → click **Publish**.
+8. Refresh the app and sign in again — it should work now.
 
-> Want a co-parent or tutor to also add questions? Have them sign up once, grab their UID the same way, and add it as a second entry in both rules files.
+> **Want a co-parent or tutor to also add questions?** Have them sign in once, grab their UID from Authentication → Users, then repeat steps 3-5 with their UID as a second document in `authorizedUsers`. No code or rules changes needed — just another document in the console.
+
+> **To revoke someone's access later**, just delete their document from the `authorizedUsers` collection in the console. Takes effect immediately.
 
 ## 6. Run it locally before deploying
 

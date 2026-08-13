@@ -2,23 +2,22 @@ rules_version = '2';
 
 // ============================================================
 // STORAGE SECURITY RULES
-// Same idea as firestore.rules — only your approved UID(s) can
-// upload/view question images. Paste your UID below (same one you
-// used in firestore.rules), then paste this whole file into
-// Firebase console -> Storage -> Rules tab, and click "Publish".
 // ============================================================
-
-function isAllowedUser() {
-  return request.auth != null && request.auth.uid in [
-    "PASTE_YOUR_USER_UID_HERE"
-    // , "ANOTHER_ALLOWED_UID_HERE"
-  ];
-}
+// Same idea as firestore.rules: no UIDs live in this file. Instead
+// it checks the "authorizedUsers" collection in Firestore directly
+// (a "cross-service" rule) using the same list you set up there.
+// You don't need to add anything separately for Storage — adding
+// yourself once in Firestore's authorizedUsers collection covers both.
+//
+// Paste this whole file into Firebase console -> Storage -> Rules
+// tab -> Publish.
+// ============================================================
 
 service firebase.storage {
   match /b/{bucket}/o {
     match /question-images/{allPaths=**} {
-      allow read, write: if isAllowedUser();
+      allow read, write: if request.auth != null &&
+        firestore.exists(/databases/(default)/documents/authorizedUsers/$(request.auth.uid));
     }
   }
 }
