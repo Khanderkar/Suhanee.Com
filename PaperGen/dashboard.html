@@ -72,19 +72,32 @@
             <div class="field">
               <label>Question type</label>
               <select id="q-type">
+                <option value="subjective" selected>Subjective / long answer</option>
                 <option value="mcq">Multiple choice</option>
-                <option value="subjective">Subjective / long answer</option>
               </select>
             </div>
           </div>
 
           <div class="field">
             <label>Question text</label>
-            <textarea id="q-text" rows="3" required placeholder="Type the question here..."></textarea>
+            <div class="rte-toolbar" data-target="q-text">
+              <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+              <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+              <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+              <span class="rte-sep"></span>
+              <button type="button" data-cmd="insertUnorderedList" title="Bullet list">• List</button>
+              <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+              <span class="rte-sep"></span>
+              <button type="button" data-cmd="superscript" title="Superscript (e.g. x²)">x²</button>
+              <button type="button" data-cmd="subscript" title="Subscript (e.g. x₂)">x₂</button>
+              <span class="rte-sep"></span>
+              <button type="button" data-cmd="removeFormat" title="Clear formatting">Clear</button>
+            </div>
+            <div id="q-text" class="rte-editable" contenteditable="true" data-placeholder="Type the question here..." data-required="true"></div>
           </div>
 
           <!-- MCQ-only options -->
-          <div id="mcq-options" class="field">
+          <div id="mcq-options" class="field hidden">
             <label>Options (mark the correct one)</label>
             <div class="option-row">
               <input type="radio" name="correct-option" value="0" checked />
@@ -105,10 +118,24 @@
           </div>
 
           <!-- Subjective-only answer key -->
-          <div id="subjective-answer" class="field hidden">
+          <div id="subjective-answer" class="field">
             <label>Model answer / key points (for your reference, kept private with the question)</label>
-            <textarea id="q-answer-text" rows="3" placeholder="Answer or key points..."></textarea>
+            <div class="rte-toolbar" data-target="q-answer-text">
+              <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+              <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+              <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+              <span class="rte-sep"></span>
+              <button type="button" data-cmd="insertUnorderedList" title="Bullet list">• List</button>
+              <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+              <span class="rte-sep"></span>
+              <button type="button" data-cmd="superscript" title="Superscript (e.g. x²)">x²</button>
+              <button type="button" data-cmd="subscript" title="Subscript (e.g. x₂)">x₂</button>
+              <span class="rte-sep"></span>
+              <button type="button" data-cmd="removeFormat" title="Clear formatting">Clear</button>
+            </div>
+            <div id="q-answer-text" class="rte-editable" contenteditable="true" data-placeholder="Answer or key points..."></div>
           </div>
+
 
           <div class="grid-3">
             <div class="field">

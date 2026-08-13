@@ -16,6 +16,7 @@ function initAddQuestionForm() {
   if (!form) return;
 
   addQuestionCascade = wireCascadingSelects(["q-board", "q-grade", "q-subject", "q-chapter", "q-topic"]);
+  initRichTextToolbars();
 
   const typeSelect = document.getElementById("q-type");
   const mcqBlock = document.getElementById("mcq-options");
@@ -49,9 +50,16 @@ function initAddQuestionForm() {
       await addQuestionCascade.persistNewValues();
 
       const type = typeSelect.value;
-      const questionText = document.getElementById("q-text").value.trim();
+      const qTextEl = document.getElementById("q-text");
+      const questionText = qTextEl.innerHTML.trim();
+      const questionTextPlain = qTextEl.textContent.trim();
       const marks = Number(document.getElementById("q-marks").value) || 1;
       const difficulty = document.getElementById("q-difficulty").value;
+
+      if (!questionTextPlain && qTextEl.dataset.required !== "false") {
+        statusEl.textContent = "Please type the question (or switch to a full-question scanned image).";
+        return;
+      }
 
       const data = {
         board: selection.board,
@@ -87,7 +95,7 @@ function initAddQuestionForm() {
         // FieldValue.delete() is only valid on an update/merge, not on a brand-new document
         if (editingQuestionId) data.answerText = firebase.firestore.FieldValue.delete();
       } else {
-        data.answerText = document.getElementById("q-answer-text").value.trim();
+        data.answerText = document.getElementById("q-answer-text").innerHTML.trim();
         if (editingQuestionId) {
           data.options = firebase.firestore.FieldValue.delete();
           data.correctOption = firebase.firestore.FieldValue.delete();
@@ -134,12 +142,33 @@ function initAddQuestionForm() {
   });
 }
 
+// ---------- RICH TEXT TOOLBARS (used for Question text + Answer key) ----------
+// Uses the browser's built-in execCommand — simple, dependency-free, and
+// good enough for bold/italic/underline/lists/super-subscript.
+function initRichTextToolbars() {
+  document.querySelectorAll(".rte-toolbar").forEach((toolbar) => {
+    const targetId = toolbar.dataset.target;
+    const editable = document.getElementById(targetId);
+    if (!editable) return;
+    toolbar.querySelectorAll("button").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        editable.focus();
+        document.execCommand(btn.dataset.cmd, false, null);
+      });
+    });
+  });
+}
+
 // Resets the Add Question form back to its normal "create new" state
 function exitEditMode(form, mcqBlock, subjectiveBlock) {
   editingQuestionId = null;
   form.reset();
-  mcqBlock.classList.remove("hidden");
-  subjectiveBlock.classList.add("hidden");
+  document.getElementById("q-text").innerHTML = "";
+  document.getElementById("q-answer-text").innerHTML = "";
+  mcqBlock.classList.add("hidden");
+  subjectiveBlock.classList.remove("hidden");
+  document.getElementById("q-type").value = "subjective";
   document.getElementById("form-heading").textContent = "Add a question";
   document.getElementById("save-btn").textContent = "Save question";
   document.getElementById("cancel-edit-btn").classList.add("hidden");
@@ -185,7 +214,9 @@ function startEditQuestion(q) {
   typeSelect.value = q.type;
   typeSelect.dispatchEvent(new Event("change"));
 
-  document.getElementById("q-text").value = q.questionText || "";
+  const qTextEl = document.getElementById("q-text");
+  qTextEl.innerHTML = q.questionText || "";
+  qTextEl.dataset.required = (!q.questionText && q.imageURL) ? "false" : "true";
   document.getElementById("q-marks").value = q.marks || 1;
   document.getElementById("q-difficulty").value = q.difficulty || "medium";
 
@@ -198,7 +229,7 @@ function startEditQuestion(q) {
     const radio = mcqBlock.querySelector(`input[name="correct-option"][value="${q.correctOption}"]`);
     if (radio) radio.checked = true;
   } else {
-    document.getElementById("q-answer-text").value = q.answerText || "";
+    document.getElementById("q-answer-text").innerHTML = q.answerText || "";
   }
 
   const imageNote = document.getElementById("existing-image-note");
@@ -335,14 +366,14 @@ function renderQuestionList(listEl, questions) {
         <span class="tag tag-type">${q.type === "mcq" ? "MCQ" : "Subjective"}</span>
         <span class="tag tag-marks">${q.marks} mark(s)</span>
       </div>
-      <p class="q-card-text">${escapeHtml(q.questionText)}</p>
+      <div class="q-card-text rich-content">${q.questionText || ""}</div>
       ${q.imageURL ? `<img class="q-card-image" src="${q.imageURL}" alt="question diagram" />` : ""}
       ${
         q.type === "mcq"
           ? `<ul class="q-card-options">${(q.options || [])
               .map((o, i) => `<li class="${i === q.correctOption ? "correct" : ""}">${escapeHtml(o)}</li>`)
               .join("")}</ul>`
-          : `<p class="q-card-answer"><em>Answer key:</em> ${escapeHtml(q.answerText || "—")}</p>`
+          : `<div class="q-card-answer"><em>Answer key:</em></div><div class="q-card-answer rich-content">${q.answerText || "—"}</div>`
       }
       <div class="q-card-actions">
         <button class="btn-ghost btn-small edit-q">Edit</button>

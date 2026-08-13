@@ -88,8 +88,8 @@ function initQrScan() {
     previewWrap.classList.add("hidden");
     previewImg.src = "";
     const qText = document.getElementById("q-text");
-    qText.required = true;
-    qText.placeholder = "Type the question here...";
+    qText.dataset.required = "true";
+    qText.dataset.placeholder = "Type the question here...";
   });
 }
 
@@ -98,11 +98,11 @@ function initQrScan() {
 function applyScanMode(mode) {
   const qText = document.getElementById("q-text");
   if (mode === "full") {
-    qText.required = false;
-    qText.placeholder = "Optional — the scanned image contains the full question";
+    qText.dataset.required = "false";
+    qText.dataset.placeholder = "Optional — the scanned image contains the full question";
   } else {
-    qText.required = true;
-    qText.placeholder = "Type the question here...";
+    qText.dataset.required = "true";
+    qText.dataset.placeholder = "Type the question here...";
   }
 }
 
@@ -115,8 +115,8 @@ function resetScanState() {
   if (previewImg) previewImg.src = "";
   const qText = document.getElementById("q-text");
   if (qText) {
-    qText.required = true;
-    qText.placeholder = "Type the question here...";
+    qText.dataset.required = "true";
+    qText.dataset.placeholder = "Type the question here...";
   }
   const fullRadio = document.querySelector('input[name="scan-mode"][value="partial"]');
   if (fullRadio) fullRadio.checked = true;

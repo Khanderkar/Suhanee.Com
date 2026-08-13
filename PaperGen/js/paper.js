@@ -86,7 +86,7 @@ function renderPaper(outputEl, mcqQuestions, subjectiveQuestions) {
           .map(
             (q, i) => `
           <li>
-            <p>${escapeHtml(q.questionText)} <span class="marks-tag">[${q.marks}]</span></p>
+            <div class="rich-content question-inline"><span class="marks-tag">[${q.marks}]</span> ${q.questionText || ""}</div>
             ${q.imageURL ? `<img class="q-card-image" src="${q.imageURL}" alt="" />` : ""}
             <ol type="A" class="mcq-options">
               ${q.options.map((o, oi) => `<li class="${oi === q.correctOption ? "answer-highlight" : ""}">${escapeHtml(o)}</li>`).join("")}
@@ -102,9 +102,9 @@ function renderPaper(outputEl, mcqQuestions, subjectiveQuestions) {
           .map(
             (q) => `
           <li>
-            <p>${escapeHtml(q.questionText)} <span class="marks-tag">[${q.marks}]</span></p>
+            <div class="rich-content question-inline"><span class="marks-tag">[${q.marks}]</span> ${q.questionText || ""}</div>
             ${q.imageURL ? `<img class="q-card-image" src="${q.imageURL}" alt="" />` : ""}
-            <p class="answer-highlight answer-only">Answer key: ${escapeHtml(q.answerText || "—")}</p>
+            <div class="answer-highlight answer-only"><em>Answer key:</em> <span class="rich-content">${q.answerText || "—"}</span></div>
           </li>`
           )
           .join("")}
