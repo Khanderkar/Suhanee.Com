@@ -17,7 +17,6 @@ const firebaseConfig = {
   appId: "1:1098056725129:web:1e3b458e2518bba1ad4c58",
   measurementId: "G-B6KMX3L61E"
 };
-};
 
 // Initialize Firebase (using the "compat" SDK loaded via <script> tags in the HTML files)
 firebase.initializeApp(firebaseConfig);
