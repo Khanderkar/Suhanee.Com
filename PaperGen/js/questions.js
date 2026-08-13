@@ -175,17 +175,38 @@ async function performSave(mcqBlock, typeSelect) {
 
 // ---------- RICH TEXT TOOLBARS (used for Question text + Answer key) ----------
 // Uses the browser's built-in execCommand — simple, dependency-free, and
-// good enough for bold/italic/underline/lists/super-subscript.
+// good enough for bold/italic/underline/lists/super-subscript/symbols.
 function initRichTextToolbars() {
   document.querySelectorAll(".rte-toolbar").forEach((toolbar) => {
     const targetId = toolbar.dataset.target;
     const editable = document.getElementById(targetId);
     if (!editable) return;
-    toolbar.querySelectorAll("button").forEach((btn) => {
+
+    toolbar.querySelectorAll("button[data-cmd]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         editable.focus();
-        document.execCommand(btn.dataset.cmd, false, null);
+        document.execCommand(btn.dataset.cmd, false, btn.dataset.value || null);
+      });
+    });
+
+    // "Insert fraction" — builds a proper stacked fraction (numerator over
+    // denominator), not just a slash, since that's what actually looks right
+    // for grade-level math. Asks for the two numbers via simple prompts.
+    toolbar.querySelectorAll('button[data-action="fraction"]').forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        editable.focus();
+        const numerator = prompt("Numerator (top number):", "1");
+        if (numerator === null || numerator.trim() === "") return;
+        const denominator = prompt("Denominator (bottom number):", "2");
+        if (denominator === null || denominator.trim() === "") return;
+        const html =
+          `<span class="frac" contenteditable="false">` +
+          `<span class="num">${escapeHtml(numerator.trim())}</span>` +
+          `<span class="denom">${escapeHtml(denominator.trim())}</span>` +
+          `</span>&nbsp;`;
+        document.execCommand("insertHTML", false, html);
       });
     });
   });
