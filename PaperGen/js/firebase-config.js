@@ -8,12 +8,13 @@
 // ============================================================
 
 const firebaseConfig = {
-  apiKey: "PASTE_YOUR_API_KEY_HERE",
-  authDomain: "PASTE_YOUR_AUTH_DOMAIN_HERE",
-  projectId: "PASTE_YOUR_PROJECT_ID_HERE",
-  storageBucket: "PASTE_YOUR_STORAGE_BUCKET_HERE",
-  messagingSenderId: "PASTE_YOUR_SENDER_ID_HERE",
-  appId: "PASTE_YOUR_APP_ID_HERE"
+  apiKey: "AIzaSyCacW4VdF1mgrMp1p2j3D4Ai2Az5TxCdlU",
+  authDomain: "suhanee-papergen.firebaseapp.com",
+  projectId: "suhanee-papergen",
+  storageBucket: "suhanee-papergen.firebasestorage.app",
+  messagingSenderId: "1098056725129",
+  appId: "1:1098056725129:web:1e3b458e2518bba1ad4c58",
+  measurementId: "G-B6KMX3L61E"
 };
 
 // Initialize Firebase (using the "compat" SDK loaded via <script> tags in the HTML files)
