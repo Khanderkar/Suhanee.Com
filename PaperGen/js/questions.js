@@ -34,112 +34,142 @@ function initAddQuestionForm() {
     exitEditMode(form, mcqBlock, subjectiveBlock);
   });
 
+  // "Save" — saves, then fully clears the form for a brand-new question
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const statusEl = document.getElementById("save-status");
-    statusEl.textContent = editingQuestionId ? "Updating..." : "Saving...";
-
-    try {
-      const selection = addQuestionCascade.getSelection();
-      if (!selection.board || !selection.grade || !selection.subject || !selection.chapter) {
-        statusEl.textContent = "Please fill in Board, Grade, Subject and Chapter.";
-        return;
-      }
-
-      // Persist any brand-new taxonomy values (e.g. a newly typed chapter/topic) first
-      await addQuestionCascade.persistNewValues();
-
-      const type = typeSelect.value;
-      const qTextEl = document.getElementById("q-text");
-      const questionText = qTextEl.innerHTML.trim();
-      const questionTextPlain = qTextEl.textContent.trim();
-      const marks = Number(document.getElementById("q-marks").value) || 1;
-      const difficulty = document.getElementById("q-difficulty").value;
-
-      if (!questionTextPlain && qTextEl.dataset.required !== "false") {
-        statusEl.textContent = "Please type the question (or switch to a full-question scanned image).";
-        return;
-      }
-
-      const data = {
-        board: selection.board,
-        grade: selection.grade,
-        subject: selection.subject,
-        chapter: selection.chapter,
-        topic: selection.topic || null,
-        type,
-        questionText,
-        marks,
-        difficulty
-      };
-
-      if (editingQuestionId) {
-        data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-      } else {
-        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        data.createdBy = auth.currentUser.uid;
-      }
-
-      if (type === "mcq") {
-        const optionEls = mcqBlock.querySelectorAll(".option-text");
-        const options = Array.from(optionEls).map((el) => el.value.trim());
-        if (options.some((o) => !o)) {
-          statusEl.textContent = "Please fill in all 4 options.";
-          return;
-        }
-        const correctIndex = Number(
-          mcqBlock.querySelector('input[name="correct-option"]:checked').value
-        );
-        data.options = options;
-        data.correctOption = correctIndex;
-        // FieldValue.delete() is only valid on an update/merge, not on a brand-new document
-        if (editingQuestionId) data.answerText = firebase.firestore.FieldValue.delete();
-      } else {
-        data.answerText = document.getElementById("q-answer-text").innerHTML.trim();
-        if (editingQuestionId) {
-          data.options = firebase.firestore.FieldValue.delete();
-          data.correctOption = firebase.firestore.FieldValue.delete();
-        }
-      }
-
-      // Attach an image: prefer a phone-scanned image if one is waiting; otherwise
-      // upload a manually-picked file, if any.
-      if (scannedImageData) {
-        data.imageURL = scannedImageData.url;
-        data.imagePath = scannedImageData.path;
-      } else {
-        const imageFile = document.getElementById("q-image").files[0];
-        if (imageFile) {
-          statusEl.textContent = "Uploading image...";
-          const path = `question-images/${auth.currentUser.uid}/${Date.now()}_${imageFile.name}`;
-          const ref = storage.ref(path);
-          await ref.put(imageFile);
-          data.imageURL = await ref.getDownloadURL();
-          data.imagePath = path;
-        }
-      }
-
-      if (editingQuestionId) {
-        // FieldValue.delete() can't be used on .add(), but is fine on .set()/.update()
-        await QUESTIONS_COL().doc(editingQuestionId).set(data, { merge: true });
-        statusEl.textContent = "Updated!";
-      } else {
-        await QUESTIONS_COL().add(data);
-        statusEl.textContent = "Saved!";
-      }
-
-      const wasEditing = !!editingQuestionId;
+    const result = await performSave(mcqBlock, typeSelect);
+    if (result.ok) {
       exitEditMode(form, mcqBlock, subjectiveBlock);
-      setTimeout(() => (statusEl.textContent = ""), 2000);
-
-      if (wasEditing) {
-        refreshBankList();
-      }
-    } catch (err) {
-      console.error(err);
-      document.getElementById("save-status").textContent = "Error saving question. See console for details.";
+      if (result.wasEditing) refreshBankList();
     }
   });
+
+  // "Save & Add Another" — saves, then keeps Board/Grade/Subject/Chapter/Topic,
+  // question type, question text and answer as-is, ready to tweak into the next one.
+  document.getElementById("save-another-btn").addEventListener("click", async () => {
+    const result = await performSave(mcqBlock, typeSelect);
+    if (result.ok) {
+      const wasEditing = result.wasEditing;
+      editingQuestionId = null;
+      document.getElementById("form-heading").textContent = "Add a question";
+      document.getElementById("save-btn").textContent = "Save";
+      document.getElementById("cancel-edit-btn").classList.add("hidden");
+      document.getElementById("existing-image-note").classList.add("hidden");
+      // Clear only the image-related state — attaching the same photo to two
+      // different questions is rarely intended, everything else stays filled in.
+      resetScanState();
+      document.getElementById("q-image").value = "";
+      if (wasEditing) refreshBankList();
+      document.getElementById("q-text").focus();
+    }
+  });
+}
+
+// Runs validation, builds the question data, uploads/attaches any image, and
+// writes to Firestore. Shared by both the "Save" and "Save & Add Another" buttons.
+// Does NOT touch the form's fields — callers decide what to reset afterward.
+async function performSave(mcqBlock, typeSelect) {
+  const statusEl = document.getElementById("save-status");
+  statusEl.textContent = editingQuestionId ? "Updating..." : "Saving...";
+
+  try {
+    const selection = addQuestionCascade.getSelection();
+    if (!selection.board || !selection.grade || !selection.subject || !selection.chapter) {
+      statusEl.textContent = "Please fill in Board, Grade, Subject and Chapter.";
+      return { ok: false };
+    }
+
+    // Persist any brand-new taxonomy values (e.g. a newly typed chapter/topic) first
+    await addQuestionCascade.persistNewValues();
+
+    const type = typeSelect.value;
+    const qTextEl = document.getElementById("q-text");
+    const questionText = qTextEl.innerHTML.trim();
+    const questionTextPlain = qTextEl.textContent.trim();
+    const marks = Number(document.getElementById("q-marks").value) || 1;
+    const difficulty = document.getElementById("q-difficulty").value;
+
+    if (!questionTextPlain && qTextEl.dataset.required !== "false") {
+      statusEl.textContent = "Please type the question (or switch to a full-question scanned image).";
+      return { ok: false };
+    }
+
+    const data = {
+      board: selection.board,
+      grade: selection.grade,
+      subject: selection.subject,
+      chapter: selection.chapter,
+      topic: selection.topic || null,
+      type,
+      questionText,
+      marks,
+      difficulty
+    };
+
+    const wasEditing = !!editingQuestionId;
+
+    if (wasEditing) {
+      data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      data.createdBy = auth.currentUser.uid;
+    }
+
+    if (type === "mcq") {
+      const optionEls = mcqBlock.querySelectorAll(".option-text");
+      const options = Array.from(optionEls).map((el) => el.value.trim());
+      if (options.some((o) => !o)) {
+        statusEl.textContent = "Please fill in all 4 options.";
+        return { ok: false };
+      }
+      const correctIndex = Number(
+        mcqBlock.querySelector('input[name="correct-option"]:checked').value
+      );
+      data.options = options;
+      data.correctOption = correctIndex;
+      // FieldValue.delete() is only valid on an update/merge, not on a brand-new document
+      if (wasEditing) data.answerText = firebase.firestore.FieldValue.delete();
+    } else {
+      data.answerText = document.getElementById("q-answer-text").innerHTML.trim();
+      if (wasEditing) {
+        data.options = firebase.firestore.FieldValue.delete();
+        data.correctOption = firebase.firestore.FieldValue.delete();
+      }
+    }
+
+    // Attach an image: prefer a phone-scanned image if one is waiting; otherwise
+    // upload a manually-picked file, if any.
+    if (scannedImageData) {
+      data.imageURL = scannedImageData.url;
+      data.imagePath = scannedImageData.path;
+    } else {
+      const imageFile = document.getElementById("q-image").files[0];
+      if (imageFile) {
+        statusEl.textContent = "Uploading image...";
+        const path = `question-images/${auth.currentUser.uid}/${Date.now()}_${imageFile.name}`;
+        const ref = storage.ref(path);
+        await ref.put(imageFile);
+        data.imageURL = await ref.getDownloadURL();
+        data.imagePath = path;
+      }
+    }
+
+    if (wasEditing) {
+      // FieldValue.delete() can't be used on .add(), but is fine on .set()/.update()
+      await QUESTIONS_COL().doc(editingQuestionId).set(data, { merge: true });
+      statusEl.textContent = "Updated!";
+    } else {
+      await QUESTIONS_COL().add(data);
+      statusEl.textContent = "Saved!";
+    }
+
+    setTimeout(() => (statusEl.textContent = ""), 2000);
+    return { ok: true, wasEditing };
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = "Error saving question. See console for details.";
+    return { ok: false };
+  }
 }
 
 // ---------- RICH TEXT TOOLBARS (used for Question text + Answer key) ----------
@@ -170,7 +200,7 @@ function exitEditMode(form, mcqBlock, subjectiveBlock) {
   subjectiveBlock.classList.remove("hidden");
   document.getElementById("q-type").value = "subjective";
   document.getElementById("form-heading").textContent = "Add a question";
-  document.getElementById("save-btn").textContent = "Save question";
+  document.getElementById("save-btn").textContent = "Save";
   document.getElementById("cancel-edit-btn").classList.add("hidden");
   document.getElementById("existing-image-note").classList.add("hidden");
   resetScanState();
