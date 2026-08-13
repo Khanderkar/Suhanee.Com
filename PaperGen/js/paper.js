@@ -94,10 +94,6 @@ function renderPaperFilterBar(containerEl, onChange) {
       <label>Difficulty <span class="hint-inline">(leave all unticked to include every difficulty)</span></label>
       <div class="checkbox-grid pf-difficulty"></div>
     </div>
-    <div class="field">
-      <button type="button" id="show-count-btn" class="btn-ghost btn-small">Show count for this selection</button>
-      <span id="pf-count-result" class="hint"></span>
-    </div>
   `;
 
   const els = {
@@ -194,6 +190,15 @@ function renderPaperFilterBar(containerEl, onChange) {
     return pool;
   }
 
+  // scopedPool() further narrowed by whatever difficulty levels are ticked —
+  // this is the exact pool the paper generator will draw from.
+  function finalScopedPool() {
+    const selectedDifficulties = checkedValues(els.difficulty);
+    let pool = scopedPool();
+    if (selectedDifficulties.length) pool = pool.filter((q) => selectedDifficulties.includes(q.difficulty));
+    return pool;
+  }
+
   function rebuildDifficulty() {
     const pool = scopedPool();
     const counts = { easy: 0, medium: 0, hard: 0 };
@@ -210,12 +215,13 @@ function renderPaperFilterBar(containerEl, onChange) {
   }
 
   function emit() {
-    const countResult = containerEl.querySelector("#pf-count-result");
-    if (countResult) countResult.textContent = "";
+    const finalPool = finalScopedPool();
+    const mcqCount = finalPool.filter((q) => q.type === "mcq").length;
+    const subjCount = finalPool.filter((q) => q.type === "subjective").length;
     const mcqLabel = document.getElementById("label-num-mcq");
     const subjLabel = document.getElementById("label-num-subjective");
-    if (mcqLabel) mcqLabel.textContent = "Number of MCQs";
-    if (subjLabel) subjLabel.textContent = "Number of subjective";
+    if (mcqLabel) mcqLabel.textContent = `Number of MCQs (${mcqCount} available)`;
+    if (subjLabel) subjLabel.textContent = `Number of subjective (${subjCount} available)`;
 
     onChange({
       board: els.board.value || null,
@@ -248,21 +254,6 @@ function renderPaperFilterBar(containerEl, onChange) {
     await refreshSubjectPool();
     rebuildChapters();
     emit();
-  });
-
-  const countBtn = containerEl.querySelector("#show-count-btn");
-  const countResult = containerEl.querySelector("#pf-count-result");
-  countBtn.addEventListener("click", async () => {
-    countResult.textContent = "Counting...";
-    const matching = await loadQuestionsForPaper(paperFilters);
-    const mcqCount = matching.filter((q) => q.type === "mcq").length;
-    const subjCount = matching.filter((q) => q.type === "subjective").length;
-    countResult.textContent = `${matching.length} question(s) match this selection.`;
-
-    const mcqLabel = document.getElementById("label-num-mcq");
-    const subjLabel = document.getElementById("label-num-subjective");
-    if (mcqLabel) mcqLabel.textContent = `Number of MCQs (${mcqCount} available)`;
-    if (subjLabel) subjLabel.textContent = `Number of subjective (${subjCount} available)`;
   });
 
   (async () => {
