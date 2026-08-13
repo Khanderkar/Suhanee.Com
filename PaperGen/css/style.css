@@ -399,6 +399,17 @@ form input:focus, form select:focus, form textarea:focus {
 }
 .question-row .rich-content { flex: 1; margin: 0; }
 .question-row .marks-tag { flex-shrink: 0; white-space: nowrap; }
+.question-row-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.edit-q-inline {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 4px;
+}
+.edit-q-inline:hover { background: var(--gold-soft); }
 .mcq-options { margin-top: 6px; padding-left: 20px; }
 .answer-highlight { background: transparent; border-radius: 4px; }
 .answer-highlight.answer-visible { background: var(--gold-soft); padding: 2px 4px; }
