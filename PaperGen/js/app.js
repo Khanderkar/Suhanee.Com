@@ -28,6 +28,7 @@ if (document.getElementById("user-email")) {
     if (!user) return; // auth.js already redirects to login
     await loadTaxonomy();
     initAddQuestionForm();
+    initQrScan();
     initQuestionBankView();
     initPaperGeneratorView();
   });

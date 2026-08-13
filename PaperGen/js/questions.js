@@ -94,15 +94,21 @@ function initAddQuestionForm() {
         }
       }
 
-      // Upload image if a new one was chosen (otherwise keep whatever's already saved)
-      const imageFile = document.getElementById("q-image").files[0];
-      if (imageFile) {
-        statusEl.textContent = "Uploading image...";
-        const path = `question-images/${auth.currentUser.uid}/${Date.now()}_${imageFile.name}`;
-        const ref = storage.ref(path);
-        await ref.put(imageFile);
-        data.imageURL = await ref.getDownloadURL();
-        data.imagePath = path;
+      // Attach an image: prefer a phone-scanned image if one is waiting; otherwise
+      // upload a manually-picked file, if any.
+      if (scannedImageData) {
+        data.imageURL = scannedImageData.url;
+        data.imagePath = scannedImageData.path;
+      } else {
+        const imageFile = document.getElementById("q-image").files[0];
+        if (imageFile) {
+          statusEl.textContent = "Uploading image...";
+          const path = `question-images/${auth.currentUser.uid}/${Date.now()}_${imageFile.name}`;
+          const ref = storage.ref(path);
+          await ref.put(imageFile);
+          data.imageURL = await ref.getDownloadURL();
+          data.imagePath = path;
+        }
       }
 
       if (editingQuestionId) {
@@ -138,6 +144,7 @@ function exitEditMode(form, mcqBlock, subjectiveBlock) {
   document.getElementById("save-btn").textContent = "Save question";
   document.getElementById("cancel-edit-btn").classList.add("hidden");
   document.getElementById("existing-image-note").classList.add("hidden");
+  resetScanState();
   // Re-collapse the cascading dropdowns back to just "Board" enabled
   const boardSelect = document.getElementById("q-board");
   boardSelect.value = "";

@@ -25,12 +25,14 @@ rules_version = '2';
 
 function isAllowedUser() {
   return request.auth != null &&
-    exists(/databases/$(database)/documents/authorizedUsers/$(request.auth.uid));
+    exists(/databases/(default)/documents/authorizedUsers/$(request.auth.uid));
 }
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Each user can only read their OWN entry, just to check they're authorized.
+    // Nobody can write here from the app - only you, via the Firebase console.
     match /authorizedUsers/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow write: if false;
@@ -41,6 +43,13 @@ service cloud.firestore {
     }
 
     match /questions/{questionId} {
+      allow read, write: if isAllowedUser();
+    }
+
+    // Used by the "scan from phone" feature: the PC creates a session doc,
+    // the phone (same authorized account, signed in separately) writes the
+    // scanned image info into it, and the PC's live listener picks it up.
+    match /photoSessions/{sessionId} {
       allow read, write: if isAllowedUser();
     }
   }
