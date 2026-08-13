@@ -477,8 +477,40 @@ form input:focus, form select:focus, form textarea:focus {
   margin: 12px 0;
 }
 .cropper-container-wrap img { max-width: 100%; display: block; }
-.scan-crop-actions {
-  display: flex;
-  gap: 12px;
-}
+.scan-crop-actions { display: flex; gap: 12px; }
 .scan-crop-actions button { flex: 1; }
+
+.question-info-box {
+  background: var(--ink);
+  color: #E4E8F1;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.question-info-crumbs {
+  font-family: var(--mono);
+  font-size: 12px;
+  margin: 0 0 4px;
+  color: var(--gold-soft);
+}
+.question-info-type {
+  font-size: 13px;
+  margin: 0;
+  color: #C4CADC;
+}
+
+.review-image-wrap {
+  max-height: 55vh;
+  overflow: auto;
+  background: #000;
+  border-radius: 8px;
+  margin: 12px 0 6px;
+}
+.review-image-wrap img { max-width: 100%; display: block; }
+.review-stats {
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-light);
+  margin: 0 0 16px;
+}

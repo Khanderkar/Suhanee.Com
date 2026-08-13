@@ -25,6 +25,9 @@
       <p id="scan-auth-error" class="error-banner hidden"></p>
     </div>
 
+    <!-- Question context, shown once a valid session is found -->
+    <div id="scan-question-info" class="question-info-box hidden"></div>
+
     <!-- Step 1: no valid session -->
     <div id="scan-invalid" class="hidden">
       <p class="warning-banner">This scan link is invalid, already used, or expired. Go back to your computer and click "Scan from phone" again.</p>
@@ -41,13 +44,28 @@
 
     <!-- Step 3: crop -->
     <div id="scan-crop" class="hidden">
-      <p class="hint">Drag the corners to crop to just the question, then confirm.</p>
+      <p class="hint">Drag the corners to crop to just the question, then continue.</p>
       <div class="cropper-container-wrap">
         <img id="scan-crop-image" alt="" />
       </div>
       <div class="scan-crop-actions">
+        <button id="scan-cancel-btn" class="btn-ghost">Cancel</button>
         <button id="scan-retake-btn" class="btn-ghost">Retake</button>
-        <button id="scan-confirm-btn" class="btn-primary">Use this crop</button>
+        <button id="scan-confirm-btn" class="btn-primary">Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 3.5: review size before uploading -->
+    <div id="scan-review" class="hidden">
+      <p class="hint">Here's the photo, resized to keep your question bank fast to load.</p>
+      <div class="review-image-wrap">
+        <img id="scan-review-image" alt="Cropped preview" />
+      </div>
+      <p id="scan-review-stats" class="review-stats"></p>
+      <div class="scan-crop-actions">
+        <button id="scan-review-cancel-btn" class="btn-ghost">Cancel</button>
+        <button id="scan-review-retake-btn" class="btn-ghost">Retake</button>
+        <button id="scan-upload-btn" class="btn-primary">Upload</button>
       </div>
     </div>
 
@@ -59,6 +77,11 @@
     <!-- Step 5: done -->
     <div id="scan-done" class="hidden">
       <p class="success-banner">✅ Uploaded! Go back to your computer — it's already been added to the question.</p>
+    </div>
+
+    <!-- Step 6: cancelled -->
+    <div id="scan-cancelled" class="hidden">
+      <p class="hint">Scan cancelled — nothing was uploaded. You can close this page, or go back to your computer and click "Scan from phone" again.</p>
     </div>
   </div>
 

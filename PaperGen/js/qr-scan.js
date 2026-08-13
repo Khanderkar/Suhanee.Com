@@ -26,6 +26,13 @@ function initQrScan() {
 
   scanBtn.addEventListener("click", async () => {
     const mode = document.querySelector('input[name="scan-mode"]:checked').value;
+    const selection = addQuestionCascade.getSelection();
+    const type = document.getElementById("q-type").value;
+
+    if (!selection.board || !selection.grade || !selection.subject || !selection.chapter) {
+      alert("Please choose Board, Grade, Subject and Chapter first, so your phone can show you what you're attaching this photo to.");
+      return;
+    }
 
     const sessionRef = await PHOTO_SESSIONS_COL().add({
       status: "pending",
@@ -33,7 +40,16 @@ function initQrScan() {
       imageURL: null,
       imagePath: null,
       createdBy: auth.currentUser.uid,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      questionInfo: {
+        board: selection.board || null,
+        grade: selection.grade || null,
+        subject: selection.subject || null,
+        chapter: selection.chapter || null,
+        topic: selection.topic || null,
+        type,
+        modeLabel: mode === "full" ? "Image is the full question" : "Image supports the typed question"
+      }
     });
 
     const scanUrl = new URL("scan.html", window.location.href);
