@@ -31,8 +31,6 @@ function isAllowedUser() {
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Each user can only read their OWN entry, just to check they're authorized.
-    // Nobody can write here from the app - only you, via the Firebase console.
     match /authorizedUsers/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow write: if false;
