@@ -111,6 +111,14 @@
               <button type="button" data-action="fraction" class="rte-frac-btn" title="Insert a stacked fraction (e.g. 3/4)">a&frasl;b</button>
             </div>
             <div id="q-text" class="rte-editable" contenteditable="true" data-placeholder="Type the question here..." data-required="true"></div>
+
+            <div id="question-image-preview" class="question-image-preview hidden">
+              <img id="question-image-preview-img" alt="Attached question image" />
+              <div class="question-image-preview-actions">
+                <span id="question-image-preview-caption" class="hint"></span>
+                <button type="button" id="remove-image-btn" class="btn-ghost btn-small">Remove image</button>
+              </div>
+            </div>
           </div>
 
           <!-- MCQ-only options -->
@@ -186,7 +194,6 @@
             <div class="field">
               <label>Image / diagram (optional)</label>
               <input type="file" id="q-image" accept="image/*" />
-              <p id="existing-image-note" class="hint hidden"></p>
 
               <div class="scan-block">
                 <div class="scan-mode-row">
@@ -200,10 +207,6 @@
                   </label>
                 </div>
                 <button type="button" id="scan-phone-btn" class="btn-ghost btn-small">📱 Scan from phone</button>
-                <div id="scanned-preview" class="hidden">
-                  <img id="scanned-preview-img" alt="Scanned question" />
-                  <button type="button" id="remove-scanned-btn" class="btn-ghost btn-small">Remove scanned image</button>
-                </div>
               </div>
             </div>
           </div>
