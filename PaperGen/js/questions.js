@@ -9,6 +9,26 @@ const QUESTIONS_COL = () => db.collection("questions");
 let addQuestionCascade = null;
 let editingQuestionId = null;
 let lastBankFilters = {};
+let clearImageOnSave = false; // set when user clicks "Remove image" on an existing saved image
+
+// ---------- UNIFIED IMAGE PREVIEW (shown right under Question text) ----------
+// Used for: a freshly phone-scanned image, a manually-picked file, or an
+// existing saved image when editing a question — always the same spot.
+function showQuestionImagePreview(url, caption) {
+  const wrap = document.getElementById("question-image-preview");
+  const img = document.getElementById("question-image-preview-img");
+  const captionEl = document.getElementById("question-image-preview-caption");
+  img.src = url;
+  captionEl.textContent = caption || "";
+  wrap.classList.remove("hidden");
+}
+
+function hideQuestionImagePreview() {
+  const wrap = document.getElementById("question-image-preview");
+  const img = document.getElementById("question-image-preview-img");
+  wrap.classList.add("hidden");
+  img.src = "";
+}
 
 // ---------- ADD QUESTION FORM ----------
 function initAddQuestionForm() {
@@ -61,6 +81,28 @@ function initAddQuestionForm() {
     exitEditMode(form, mcqBlock, subjectiveBlock);
   });
 
+  // Manually picking a file previews it immediately, and takes priority over
+  // any pending phone-scanned image (the most recent choice wins).
+  document.getElementById("q-image").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    scannedImageData = null;
+    clearImageOnSave = false;
+    const reader = new FileReader();
+    reader.onload = (ev) => showQuestionImagePreview(ev.target.result, "New image — will be uploaded when you save.");
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById("remove-image-btn").addEventListener("click", () => {
+    scannedImageData = null;
+    clearImageOnSave = true;
+    document.getElementById("q-image").value = "";
+    hideQuestionImagePreview();
+    const qText = document.getElementById("q-text");
+    qText.dataset.required = "true";
+    qText.dataset.placeholder = "Type the question here...";
+  });
+
   // "Save" — saves, then fully clears the form for a brand-new question
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -81,7 +123,8 @@ function initAddQuestionForm() {
       document.getElementById("form-heading").textContent = "Add a question";
       document.getElementById("save-btn").textContent = "Save";
       document.getElementById("cancel-edit-btn").classList.add("hidden");
-      document.getElementById("existing-image-note").classList.add("hidden");
+      clearImageOnSave = false;
+      hideQuestionImagePreview();
       // Clear only the image-related state — attaching the same photo to two
       // different questions is rarely intended, everything else stays filled in.
       resetScanState();
@@ -166,7 +209,8 @@ async function performSave(mcqBlock, typeSelect) {
     }
 
     // Attach an image: prefer a phone-scanned image if one is waiting; otherwise
-    // upload a manually-picked file, if any.
+    // upload a manually-picked file, if any; otherwise honor an explicit removal;
+    // otherwise leave whatever image is already saved untouched.
     if (scannedImageData) {
       data.imageURL = scannedImageData.url;
       data.imagePath = scannedImageData.path;
@@ -179,6 +223,9 @@ async function performSave(mcqBlock, typeSelect) {
         await ref.put(imageFile);
         data.imageURL = await ref.getDownloadURL();
         data.imagePath = path;
+      } else if (clearImageOnSave && wasEditing) {
+        data.imageURL = firebase.firestore.FieldValue.delete();
+        data.imagePath = firebase.firestore.FieldValue.delete();
       }
     }
 
@@ -251,7 +298,8 @@ function exitEditMode(form, mcqBlock, subjectiveBlock) {
   document.getElementById("form-heading").textContent = "Add a question";
   document.getElementById("save-btn").textContent = "Save";
   document.getElementById("cancel-edit-btn").classList.add("hidden");
-  document.getElementById("existing-image-note").classList.add("hidden");
+  clearImageOnSave = false;
+  hideQuestionImagePreview();
   resetScanState();
   // Re-collapse the cascading dropdowns back to just "Board" enabled
   const boardSelect = document.getElementById("q-board");
@@ -312,12 +360,11 @@ function startEditQuestion(q) {
     document.getElementById("q-answer-text").innerHTML = q.answerText || "";
   }
 
-  const imageNote = document.getElementById("existing-image-note");
+  clearImageOnSave = false;
   if (q.imageURL) {
-    imageNote.textContent = "This question already has an image. Uploading a new one will replace it; leave blank to keep it.";
-    imageNote.classList.remove("hidden");
+    showQuestionImagePreview(q.imageURL, "Existing image — uploading a new one will replace it, or use \"Remove image\" to delete it.");
   } else {
-    imageNote.classList.add("hidden");
+    hideQuestionImagePreview();
   }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
