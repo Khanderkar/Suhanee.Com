@@ -25,26 +25,29 @@
       <p id="scan-auth-error" class="error-banner hidden"></p>
     </div>
 
-    <!-- Question context, shown once a valid session is found -->
-    <div id="scan-question-info" class="question-info-box hidden"></div>
-
     <!-- Step 1: no valid session -->
     <div id="scan-invalid" class="hidden">
       <p class="warning-banner">This scan link is invalid, already used, or expired. Go back to your computer and click "Scan from phone" again.</p>
     </div>
 
-    <!-- Step 2: ready to capture -->
-    <div id="scan-capture" class="hidden">
-      <p class="hint">Take a photo of the question, or pick one from your gallery.</p>
-      <label class="btn-primary" style="display:block; text-align:center; cursor:pointer;">
-        Take / choose photo
-        <input type="file" id="scan-file-input" accept="image/*" capture="environment" class="hidden" />
+    <!-- Step 2: live camera -->
+    <div id="scan-camera" class="hidden">
+      <div class="camera-wrap">
+        <video id="scan-video" autoplay muted playsinline></video>
+      </div>
+      <div class="camera-actions">
+        <button type="button" id="capture-btn" class="btn-primary">📷 Capture</button>
+      </div>
+      <label class="gallery-fallback-link">
+        or choose a photo from your gallery
+        <input type="file" id="scan-file-input" accept="image/*" class="hidden" />
       </label>
+      <p id="camera-error" class="error-banner hidden"></p>
     </div>
 
     <!-- Step 3: crop -->
     <div id="scan-crop" class="hidden">
-      <p class="hint">Drag the corners to crop to just the question, then continue.</p>
+      <p class="hint">Drag the box over just the question, then continue.</p>
       <div class="cropper-container-wrap">
         <img id="scan-crop-image" alt="" />
       </div>
@@ -83,6 +86,8 @@
     <div id="scan-cancelled" class="hidden">
       <p class="hint">Scan cancelled — nothing was uploaded. You can close this page, or go back to your computer and click "Scan from phone" again.</p>
     </div>
+
+    <canvas id="scan-canvas" class="hidden"></canvas>
   </div>
 
   <!-- Firebase SDKs -->
