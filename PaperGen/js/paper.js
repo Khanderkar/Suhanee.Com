@@ -419,7 +419,7 @@ function renderPaper(outputEl, mcqQuestions, subjectiveQuestions) {
               </span>
             </div>
             ${q.imageURL ? `<img class="q-card-image" src="${q.imageURL}" alt="" />` : ""}
-            <div class="answer-highlight answer-only"><em>Answer key:</em> <span class="rich-content">${q.answerText || "—"}</span></div>
+            <div class="answer-highlight answer-only"><em>Answer key:</em><div class="rich-content answer-body">${q.answerText || "—"}</div></div>
           </li>`
           )
           .join("")}
