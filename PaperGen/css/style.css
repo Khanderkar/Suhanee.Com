@@ -544,23 +544,27 @@ form input:focus, form select:focus, form textarea:focus {
 .scan-crop-actions { display: flex; gap: 12px; }
 .scan-crop-actions button { flex: 1; }
 
-.question-info-box {
-  background: var(--ink);
-  color: #E4E8F1;
+.camera-wrap {
+  background: #000;
   border-radius: 8px;
-  padding: 12px 14px;
-  margin-bottom: 16px;
+  overflow: hidden;
+  margin-bottom: 14px;
 }
-.question-info-crumbs {
-  font-family: var(--mono);
-  font-size: 12px;
-  margin: 0 0 4px;
-  color: var(--gold-soft);
+.camera-wrap video {
+  width: 100%;
+  display: block;
+  max-height: 60vh;
+  object-fit: cover;
 }
-.question-info-type {
+.camera-actions { margin-bottom: 12px; }
+.camera-actions .btn-primary { width: 100%; font-size: 16px; padding: 14px; }
+.gallery-fallback-link {
+  display: block;
+  text-align: center;
   font-size: 13px;
-  margin: 0;
-  color: #C4CADC;
+  color: var(--ink-light);
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .review-image-wrap {
