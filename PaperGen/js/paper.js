@@ -398,7 +398,7 @@ function renderPaper(outputEl, mcqQuestions, subjectiveQuestions) {
             </div>
             ${q.imageURL ? `<img class="q-card-image" src="${q.imageURL}" alt="" />` : ""}
             <ol type="A" class="mcq-options">
-              ${q.options.map((o, oi) => `<li class="${oi === q.correctOption ? "answer-highlight" : ""}">${escapeHtml(o)}</li>`).join("")}
+              ${q.options.map((o, oi) => `<li class="${getCorrectOptionSet(q).has(oi) ? "answer-highlight" : ""}">${escapeHtml(o)}</li>`).join("")}
             </ol>
           </li>`
           )
