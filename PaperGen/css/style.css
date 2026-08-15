@@ -478,20 +478,6 @@ form input:focus, form select:focus, form textarea:focus {
 }
 .radio-inline input { width: auto; margin: 0; }
 
-#scanned-preview {
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-#scanned-preview-img {
-  max-width: 140px;
-  max-height: 140px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  object-fit: contain;
-}
-
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -635,6 +621,27 @@ form input:focus, form select:focus, form textarea:focus {
   color: #9AA2AF;
 }
 .rte-editable ul, .rte-editable ol { margin: 4px 0; padding-left: 22px; }
+
+.question-image-preview {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.question-image-preview img {
+  max-width: 100%;
+  max-height: 280px;
+  display: block;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+.question-image-preview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 
 /* Fraction inserted via the toolbar's "a/b" button */
 .frac {
