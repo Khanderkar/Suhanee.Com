@@ -237,29 +237,77 @@ function renderPaperFilterBar(containerEl, onChange) {
   fillSelectSimple(els.grade, [], "All grades");
   fillSelectSimple(els.subject, [], "All subjects");
 
-  els.board.addEventListener("change", async () => {
+  async function onBoardChange() {
     fillSelectSimple(els.grade, els.board.value ? getGrades(els.board.value) : [], "All grades");
     fillSelectSimple(els.subject, [], "All subjects");
     await refreshSubjectPool();
     rebuildChapters();
     emit();
-  });
-  els.grade.addEventListener("change", async () => {
+  }
+  async function onGradeChange() {
     fillSelectSimple(els.subject, els.grade.value ? getSubjects(els.board.value, els.grade.value) : [], "All subjects");
     await refreshSubjectPool();
     rebuildChapters();
     emit();
-  });
-  els.subject.addEventListener("change", async () => {
+  }
+  async function onSubjectChange() {
     await refreshSubjectPool();
     rebuildChapters();
     emit();
-  });
+  }
+
+  els.board.addEventListener("change", onBoardChange);
+  els.grade.addEventListener("change", onGradeChange);
+  els.subject.addEventListener("change", onSubjectChange);
+
+  // Restores a remembered Board/Grade/Subject/Chapter/Topic scope. Chapters
+  // and Topics are checkbox groups (not selects), so after each level's async
+  // rebuild finishes, we look for a matching checkbox and tick it directly.
+  async function restoreScopePreference() {
+    const prefs = await loadScopePreference();
+    if (!prefs) return;
+
+    const hasOption = (select, value) => Array.from(select.options).some((o) => o.value === value);
+
+    if (prefs.board && hasOption(els.board, prefs.board)) {
+      els.board.value = prefs.board;
+      await onBoardChange();
+    } else return;
+
+    if (prefs.grade && hasOption(els.grade, prefs.grade)) {
+      els.grade.value = prefs.grade;
+      await onGradeChange();
+    } else return;
+
+    if (prefs.subject && hasOption(els.subject, prefs.subject)) {
+      els.subject.value = prefs.subject;
+      await onSubjectChange();
+    } else return;
+
+    if (prefs.chapter) {
+      const chapterCb = els.chapters.querySelector(`input[type="checkbox"][value="${CSS.escape(prefs.chapter)}"]`);
+      if (chapterCb) {
+        chapterCb.checked = true;
+        rebuildTopics();
+        emit();
+      }
+    }
+
+    if (prefs.topic) {
+      const topicCb = els.topics.querySelector(`input[type="checkbox"][value="${CSS.escape(prefs.topic)}"]`);
+      if (topicCb) {
+        topicCb.checked = true;
+        rebuildDifficulty();
+        emit();
+      }
+    }
+  }
 
   (async () => {
     await refreshSubjectPool();
     rebuildChapters();
     emit();
+    await restoreScopePreference();
   })();
 }
 

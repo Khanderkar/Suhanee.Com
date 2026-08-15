@@ -70,6 +70,67 @@ async function addTopic(board, grade, subject, chapter, topic) {
   await saveTaxonomy();
 }
 
+// ---- RENAMING (updates the taxonomy tree AND every matching question) ----
+// Firestore batches cap at 500 writes, so we chunk conservatively at 450.
+async function bulkUpdateQuestions(matchFields, updateFields) {
+  let query = QUESTIONS_COL();
+  Object.entries(matchFields).forEach(([key, value]) => {
+    query = query.where(key, "==", value);
+  });
+  const snap = await query.get();
+  const docs = snap.docs;
+  const CHUNK_SIZE = 450;
+  for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+    const batch = db.batch();
+    docs.slice(i, i + CHUNK_SIZE).forEach((doc) => batch.update(doc.ref, updateFields));
+    await batch.commit();
+  }
+  return docs.length;
+}
+
+async function renameBoard(oldName, newName) {
+  const data = taxonomyCache.boards[oldName];
+  delete taxonomyCache.boards[oldName];
+  taxonomyCache.boards[newName] = data;
+  await saveTaxonomy();
+  return bulkUpdateQuestions({ board: oldName }, { board: newName });
+}
+
+async function renameGrade(board, oldName, newName) {
+  const grades = taxonomyCache.boards[board].grades;
+  const data = grades[oldName];
+  delete grades[oldName];
+  grades[newName] = data;
+  await saveTaxonomy();
+  return bulkUpdateQuestions({ board, grade: oldName }, { grade: newName });
+}
+
+async function renameSubject(board, grade, oldName, newName) {
+  const subjects = taxonomyCache.boards[board].grades[grade].subjects;
+  const data = subjects[oldName];
+  delete subjects[oldName];
+  subjects[newName] = data;
+  await saveTaxonomy();
+  return bulkUpdateQuestions({ board, grade, subject: oldName }, { subject: newName });
+}
+
+async function renameChapter(board, grade, subject, oldName, newName) {
+  const chapters = taxonomyCache.boards[board].grades[grade].subjects[subject].chapters;
+  const data = chapters[oldName];
+  delete chapters[oldName];
+  chapters[newName] = data;
+  await saveTaxonomy();
+  return bulkUpdateQuestions({ board, grade, subject, chapter: oldName }, { chapter: newName });
+}
+
+async function renameTopic(board, grade, subject, chapter, oldName, newName) {
+  const topics = taxonomyCache.boards[board].grades[grade].subjects[subject].chapters[chapter].topics;
+  const idx = topics.indexOf(oldName);
+  if (idx !== -1) topics[idx] = newName;
+  await saveTaxonomy();
+  return bulkUpdateQuestions({ board, grade, subject, chapter, topic: oldName }, { topic: newName });
+}
+
 // ---- Populating a <select> with options + a "+ Add new" entry ----
 function fillSelect(selectEl, values, placeholder) {
   selectEl.innerHTML = "";
@@ -221,7 +282,7 @@ function wireCascadingSelects(ids) {
   };
 }
 
-// ---- Renders the read-only tree view on the "Manage categories" page ----
+// ---- Renders the tree view on the "Manage categories" page, with a rename (pencil) button at every level ----
 function renderTaxonomyTree(containerEl) {
   containerEl.innerHTML = "";
   const boards = getBoards();
@@ -229,26 +290,102 @@ function renderTaxonomyTree(containerEl) {
     containerEl.innerHTML = '<p class="hint">No categories yet — add your first question to create some.</p>';
     return;
   }
+
+  const statusEl = document.createElement("p");
+  statusEl.className = "hint tree-rename-status hidden";
+  containerEl.appendChild(statusEl);
+
+  function makeSummary(name, onRename) {
+    const summary = document.createElement("summary");
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "tree-label";
+    labelSpan.textContent = name;
+    summary.appendChild(labelSpan);
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "tree-edit-btn";
+    editBtn.title = "Rename (updates every question that uses this name too)";
+    editBtn.textContent = "✏️";
+    editBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onRename(name);
+    });
+    summary.appendChild(editBtn);
+    return summary;
+  }
+
+  async function handleRename(currentName, renameFn, ...pathArgs) {
+    const newName = prompt(`Rename "${currentName}" to:`, currentName);
+    if (newName === null) return;
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === currentName) return;
+
+    statusEl.textContent = `Renaming "${currentName}" to "${trimmed}" and updating matching questions...`;
+    statusEl.classList.remove("hidden");
+
+    try {
+      const count = await renameFn(...pathArgs, currentName, trimmed);
+      statusEl.textContent = `Done — renamed and updated ${count} question(s). Other open tabs won't see the new name until refreshed.`;
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Something went wrong while renaming. Please try again.";
+    }
+
+    await loadTaxonomy();
+    renderTaxonomyTree(containerEl);
+  }
+
   boards.forEach((board) => {
     const boardDiv = document.createElement("details");
     boardDiv.className = "tree-node";
-    boardDiv.innerHTML = `<summary>${escapeHtml(board)}</summary>`;
+    boardDiv.appendChild(makeSummary(board, (name) => handleRename(name, renameBoard)));
+
     getGrades(board).forEach((grade) => {
       const gradeDiv = document.createElement("details");
       gradeDiv.className = "tree-node indent-1";
-      gradeDiv.innerHTML = `<summary>${escapeHtml(grade)}</summary>`;
+      gradeDiv.appendChild(makeSummary(grade, (name) => handleRename(name, renameGrade, board)));
+
       getSubjects(board, grade).forEach((subject) => {
         const subjectDiv = document.createElement("details");
         subjectDiv.className = "tree-node indent-2";
-        subjectDiv.innerHTML = `<summary>${escapeHtml(subject)}</summary>`;
+        subjectDiv.appendChild(makeSummary(subject, (name) => handleRename(name, renameSubject, board, grade)));
+
         getChapters(board, grade, subject).forEach((chapter) => {
           const chapterDiv = document.createElement("details");
           chapterDiv.className = "tree-node indent-3";
+          chapterDiv.appendChild(makeSummary(chapter, (name) => handleRename(name, renameChapter, board, grade, subject)));
+
           const topics = getTopics(board, grade, subject, chapter);
-          chapterDiv.innerHTML = `<summary>${escapeHtml(chapter)}</summary>` +
-            (topics.length
-              ? `<ul class="topic-list">${topics.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>`
-              : '<p class="hint indent-4">No topics yet</p>');
+          if (topics.length) {
+            const ul = document.createElement("ul");
+            ul.className = "topic-list";
+            topics.forEach((topic) => {
+              const li = document.createElement("li");
+              const labelSpan = document.createElement("span");
+              labelSpan.className = "tree-label";
+              labelSpan.textContent = topic;
+              li.appendChild(labelSpan);
+
+              const editBtn = document.createElement("button");
+              editBtn.type = "button";
+              editBtn.className = "tree-edit-btn";
+              editBtn.title = "Rename (updates every question that uses this name too)";
+              editBtn.textContent = "✏️";
+              editBtn.addEventListener("click", () => handleRename(topic, renameTopic, board, grade, subject, chapter));
+              li.appendChild(editBtn);
+
+              ul.appendChild(li);
+            });
+            chapterDiv.appendChild(ul);
+          } else {
+            const p = document.createElement("p");
+            p.className = "hint indent-4";
+            p.textContent = "No topics yet";
+            chapterDiv.appendChild(p);
+          }
+
           subjectDiv.appendChild(chapterDiv);
         });
         gradeDiv.appendChild(subjectDiv);

@@ -18,6 +18,33 @@ function initAddQuestionForm() {
   addQuestionCascade = wireCascadingSelects(["q-board", "q-grade", "q-subject", "q-chapter", "q-topic"]);
   initRichTextToolbars();
 
+  // Restore the last-remembered scope, if any
+  loadScopePreference().then((prefs) => {
+    applyPreferenceToCascadingSelects(prefs, {
+      board: document.getElementById("q-board"),
+      grade: document.getElementById("q-grade"),
+      subject: document.getElementById("q-subject"),
+      chapter: document.getElementById("q-chapter"),
+      topic: document.getElementById("q-topic")
+    });
+  });
+
+  const rememberBtn = document.getElementById("remember-scope-btn");
+  const rememberStatus = document.getElementById("remember-scope-status");
+  rememberBtn.addEventListener("click", async () => {
+    const selection = addQuestionCascade.getSelection();
+    rememberStatus.textContent = "Saving...";
+    await saveScopePreference({
+      board: selection.board || null,
+      grade: selection.grade || null,
+      subject: selection.subject || null,
+      chapter: selection.chapter || null,
+      topic: selection.topic || null
+    });
+    rememberStatus.textContent = "Saved — this will load automatically next time.";
+    setTimeout(() => (rememberStatus.textContent = ""), 3000);
+  });
+
   const typeSelect = document.getElementById("q-type");
   const mcqBlock = document.getElementById("mcq-options");
   const subjectiveBlock = document.getElementById("subjective-answer");
@@ -368,6 +395,9 @@ function renderFilterBar(containerEl, onChange) {
   els.topic.addEventListener("change", emit);
 
   emit();
+
+  // Restore the last-remembered scope, if any (set via the Add Question page)
+  loadScopePreference().then((prefs) => applyPreferenceToCascadingSelects(prefs, els));
 }
 
 // ---------- QUESTION BANK VIEW ----------
