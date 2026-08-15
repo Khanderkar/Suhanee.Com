@@ -20,9 +20,6 @@ function initQrScan() {
   const qrImg = document.getElementById("qr-code-img");
   const qrStatus = document.getElementById("qr-status");
   const cancelBtn = document.getElementById("qr-cancel-btn");
-  const previewWrap = document.getElementById("scanned-preview");
-  const previewImg = document.getElementById("scanned-preview-img");
-  const removeBtn = document.getElementById("remove-scanned-btn");
 
   scanBtn.addEventListener("click", async () => {
     const mode = document.querySelector('input[name="scan-mode"]:checked').value;
@@ -65,8 +62,8 @@ function initQrScan() {
       if (!data) return;
       if (data.status === "uploaded") {
         scannedImageData = { url: data.imageURL, path: data.imagePath };
-        previewImg.src = data.imageURL;
-        previewWrap.classList.remove("hidden");
+        clearImageOnSave = false;
+        showQuestionImagePreview(data.imageURL, "Just scanned — will be attached when you save.");
         applyScanMode(mode);
         modal.classList.add("hidden");
         activeSessionUnsubscribe();
@@ -81,15 +78,6 @@ function initQrScan() {
       activeSessionUnsubscribe();
       activeSessionUnsubscribe = null;
     }
-  });
-
-  removeBtn.addEventListener("click", () => {
-    scannedImageData = null;
-    previewWrap.classList.add("hidden");
-    previewImg.src = "";
-    const qText = document.getElementById("q-text");
-    qText.dataset.required = "true";
-    qText.dataset.placeholder = "Type the question here...";
   });
 }
 
@@ -109,10 +97,7 @@ function applyScanMode(mode) {
 // Clears scan state when the form is reset (new question / cancel edit)
 function resetScanState() {
   scannedImageData = null;
-  const previewWrap = document.getElementById("scanned-preview");
-  const previewImg = document.getElementById("scanned-preview-img");
-  if (previewWrap) previewWrap.classList.add("hidden");
-  if (previewImg) previewImg.src = "";
+  hideQuestionImagePreview();
   const qText = document.getElementById("q-text");
   if (qText) {
     qText.dataset.required = "true";
