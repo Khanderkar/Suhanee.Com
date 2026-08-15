@@ -188,16 +188,27 @@ async function performSave(mcqBlock, typeSelect) {
 
     if (type === "mcq") {
       const optionEls = mcqBlock.querySelectorAll(".option-text");
-      const options = Array.from(optionEls).map((el) => el.value.trim());
-      if (options.some((o) => !o)) {
-        statusEl.textContent = "Please fill in all 4 options.";
+      const rawOptions = Array.from(optionEls).map((el) => el.value.trim());
+
+      if (!rawOptions[0] || !rawOptions[1]) {
+        statusEl.textContent = "Please fill in at least Options A and B.";
         return { ok: false };
       }
-      const correctIndex = Number(
+
+      const correctOriginalIndex = Number(
         mcqBlock.querySelector('input[name="correct-option"]:checked').value
       );
-      data.options = options;
-      data.correctOption = correctIndex;
+      if (!rawOptions[correctOriginalIndex]) {
+        statusEl.textContent = "The option marked as correct is empty — fill it in, or mark a different option as correct.";
+        return { ok: false };
+      }
+
+      // Only keep options that actually have text (C/D are optional), and
+      // remap the correct-answer index to match the resulting shorter list.
+      const filled = rawOptions.map((text, idx) => ({ text, idx })).filter((o) => o.text);
+      data.options = filled.map((o) => o.text);
+      data.correctOption = filled.findIndex((o) => o.idx === correctOriginalIndex);
+
       // FieldValue.delete() is only valid on an update/merge, not on a brand-new document
       if (wasEditing) data.answerText = firebase.firestore.FieldValue.delete();
     } else {
@@ -351,6 +362,7 @@ function startEditQuestion(q) {
   const mcqBlock = document.getElementById("mcq-options");
   if (q.type === "mcq") {
     const optionEls = mcqBlock.querySelectorAll(".option-text");
+    optionEls.forEach((el) => (el.value = "")); // clear stale values first — this question may have fewer than 4 saved options
     (q.options || []).forEach((val, i) => {
       if (optionEls[i]) optionEls[i].value = val;
     });
