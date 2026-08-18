@@ -30,6 +30,15 @@ function hideQuestionImagePreview() {
   img.src = "";
 }
 
+// Returns the set of correct-answer indexes for a question, supporting both
+// the current multi-answer format (correctOptions: number[]) and older
+// single-answer questions saved before this feature existed (correctOption: number).
+function getCorrectOptionSet(q) {
+  if (Array.isArray(q.correctOptions)) return new Set(q.correctOptions);
+  if (typeof q.correctOption === "number") return new Set([q.correctOption]);
+  return new Set();
+}
+
 // ---------- ADD QUESTION FORM ----------
 function initAddQuestionForm() {
   const form = document.getElementById("question-form");
@@ -195,26 +204,36 @@ async function performSave(mcqBlock, typeSelect) {
         return { ok: false };
       }
 
-      const correctOriginalIndex = Number(
-        mcqBlock.querySelector('input[name="correct-option"]:checked').value
+      const correctOriginalIndexes = Array.from(mcqBlock.querySelectorAll(".correct-option-cb:checked")).map((cb) =>
+        Number(cb.value)
       );
-      if (!rawOptions[correctOriginalIndex]) {
-        statusEl.textContent = "The option marked as correct is empty — fill it in, or mark a different option as correct.";
+      if (correctOriginalIndexes.length === 0) {
+        statusEl.textContent = "Please tick at least one correct answer.";
+        return { ok: false };
+      }
+      if (correctOriginalIndexes.some((idx) => !rawOptions[idx])) {
+        statusEl.textContent = "An option marked as correct is empty — fill it in, or untick it.";
         return { ok: false };
       }
 
       // Only keep options that actually have text (C/D are optional), and
-      // remap the correct-answer index to match the resulting shorter list.
+      // remap every ticked correct-answer index to match the resulting shorter list.
       const filled = rawOptions.map((text, idx) => ({ text, idx })).filter((o) => o.text);
       data.options = filled.map((o) => o.text);
-      data.correctOption = filled.findIndex((o) => o.idx === correctOriginalIndex);
+      data.correctOptions = correctOriginalIndexes
+        .map((origIdx) => filled.findIndex((o) => o.idx === origIdx))
+        .sort((a, b) => a - b);
 
       // FieldValue.delete() is only valid on an update/merge, not on a brand-new document
-      if (wasEditing) data.answerText = firebase.firestore.FieldValue.delete();
+      if (wasEditing) {
+        data.answerText = firebase.firestore.FieldValue.delete();
+        data.correctOption = firebase.firestore.FieldValue.delete(); // clear any legacy single-answer field
+      }
     } else {
       data.answerText = document.getElementById("q-answer-text").innerHTML.trim();
       if (wasEditing) {
         data.options = firebase.firestore.FieldValue.delete();
+        data.correctOptions = firebase.firestore.FieldValue.delete();
         data.correctOption = firebase.firestore.FieldValue.delete();
       }
     }
@@ -366,8 +385,10 @@ function startEditQuestion(q) {
     (q.options || []).forEach((val, i) => {
       if (optionEls[i]) optionEls[i].value = val;
     });
-    const radio = mcqBlock.querySelector(`input[name="correct-option"][value="${q.correctOption}"]`);
-    if (radio) radio.checked = true;
+    const correctSet = getCorrectOptionSet(q);
+    mcqBlock.querySelectorAll(".correct-option-cb").forEach((cb) => {
+      cb.checked = correctSet.has(Number(cb.value));
+    });
   } else {
     document.getElementById("q-answer-text").innerHTML = q.answerText || "";
   }
@@ -514,7 +535,7 @@ function renderQuestionList(listEl, questions) {
       ${
         q.type === "mcq"
           ? `<ul class="q-card-options">${(q.options || [])
-              .map((o, i) => `<li class="${i === q.correctOption ? "correct" : ""}">${escapeHtml(o)}</li>`)
+              .map((o, i) => `<li class="${getCorrectOptionSet(q).has(i) ? "correct" : ""}">${escapeHtml(o)}</li>`)
               .join("")}</ul>`
           : `<div class="q-card-answer"><em>Answer key:</em></div><div class="q-card-answer rich-content">${q.answerText || "—"}</div>`
       }
