@@ -535,7 +535,10 @@ function renderQuestionList(listEl, questions) {
       ${
         q.type === "mcq"
           ? `<ul class="q-card-options">${(q.options || [])
-              .map((o, i) => `<li class="${getCorrectOptionSet(q).has(i) ? "correct" : ""}">${escapeHtml(o)}</li>`)
+              .map((o, i) => {
+                const isCorrect = getCorrectOptionSet(q).has(i);
+                return `<li class="${isCorrect ? "correct" : ""}">${isCorrect ? "✓ " : ""}${escapeHtml(o)}</li>`;
+              })
               .join("")}</ul>`
           : `<div class="q-card-answer"><em>Answer key:</em></div><div class="q-card-answer rich-content">${q.answerText || "—"}</div>`
       }
