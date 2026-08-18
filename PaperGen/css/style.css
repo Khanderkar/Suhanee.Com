@@ -284,6 +284,36 @@ form input:focus, form select:focus, form textarea:focus {
 .btn-save-another:hover { background: var(--ink) !important; }
 .save-status { font-size: 13px; color: var(--gold); font-weight: 600; }
 
+/* ---------- TOASTS & SHAKE (save feedback) ---------- */
+.toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3000;
+  padding: 14px 26px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 14px 34px -12px rgba(0,0,0,0.35);
+  animation: toast-in 0.2s ease;
+  max-width: 90vw;
+}
+.toast-success { background: #E7F3EA; color: #2C5F38; border: 1px solid #BFE0C7; }
+.toast-error { background: #FBEAEA; color: #8B2E28; border: 1px solid #EFC7C4; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-14px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.shake-error { animation: shake-anim 0.5s; }
+@keyframes shake-anim {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-5px); }
+  40%, 60% { transform: translateX(5px); }
+}
+
 .option-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .option-row input[type="radio"], .option-row input[type="checkbox"] { width: auto; flex: 0 0 auto; margin: 0; }
 .option-row input.option-text { flex: 1 1 auto; width: auto; min-width: 0; }
