@@ -57,6 +57,104 @@ function shakeElement(el) {
   setTimeout(() => el.classList.remove("shake-error"), 600);
 }
 
+// ---------- BASIC AUTO-CALCULATE (for simple arithmetic questions) ----------
+// Pulls a calculable expression out of the question text (e.g. "Multiply -
+// -20 × 0.9 =") and evaluates it WITHOUT eval() — a small hand-written parser
+// restricted to digits/operators/parentheses only, so there's no way for
+// arbitrary code to run even in principle.
+function extractExpression(text) {
+  const cleaned = text
+    .replace(/×/g, "*")
+    .replace(/÷/g, "/")
+    .replace(/\bx\b/gi, "*") // a standalone "x" used as a multiplication sign
+    .replace(/=.*$/s, "");    // drop anything after "=" (that's usually the blank to fill)
+
+  const match = cleaned.match(/-?\d+(\.\d+)?\s*([*/+-]\s*-?\d+(\.\d+)?\s*)+/);
+  return match ? match[0].trim() : null;
+}
+
+function evaluateArithmetic(expr) {
+  // Whitelist check first — only digits, whitespace, . + - * / ( ) allowed.
+  if (!/^[\d\s.+\-*/()]+$/.test(expr)) return null;
+
+  let pos = 0;
+  function skipSpace() {
+    while (expr[pos] === " ") pos++;
+  }
+  function parseNumber() {
+    skipSpace();
+    const start = pos;
+    if (expr[pos] === "+" || expr[pos] === "-") pos++;
+    while (/[\d.]/.test(expr[pos])) pos++;
+    const numStr = expr.slice(start, pos);
+    if (numStr === "" || numStr === "+" || numStr === "-") return NaN;
+    return parseFloat(numStr);
+  }
+  function parseFactor() {
+    skipSpace();
+    if (expr[pos] === "(") {
+      pos++;
+      const val = parseExpr();
+      skipSpace();
+      if (expr[pos] === ")") pos++;
+      return val;
+    }
+    return parseNumber();
+  }
+  function parseTerm() {
+    let val = parseFactor();
+    skipSpace();
+    while (expr[pos] === "*" || expr[pos] === "/") {
+      const op = expr[pos];
+      pos++;
+      const rhs = parseFactor();
+      val = op === "*" ? val * rhs : val / rhs;
+      skipSpace();
+    }
+    return val;
+  }
+  function parseExpr() {
+    let val = parseTerm();
+    skipSpace();
+    while (expr[pos] === "+" || expr[pos] === "-") {
+      const op = expr[pos];
+      pos++;
+      const rhs = parseTerm();
+      val = op === "+" ? val + rhs : val - rhs;
+      skipSpace();
+    }
+    return val;
+  }
+
+  try {
+    const result = parseExpr();
+    return Number.isFinite(result) ? result : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function initAutoCalculate() {
+  const btn = document.getElementById("auto-calc-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const questionPlainText = document.getElementById("q-text").textContent;
+    const expr = extractExpression(questionPlainText);
+    if (!expr) {
+      showToast("Couldn't find a simple expression to calculate — please fill in the answer manually.", "error");
+      return;
+    }
+    const result = evaluateArithmetic(expr);
+    if (result === null) {
+      showToast("Couldn't calculate that expression — please fill in the answer manually.", "error");
+      return;
+    }
+    const rounded = Math.round(result * 1e9) / 1e9; // trim floating-point artifacts like 0.30000000000000004
+    document.getElementById("q-answer-text").textContent = String(rounded);
+    showToast(`Calculated: ${expr} = ${rounded}`, "success");
+  });
+}
+
 // ---------- ADD QUESTION FORM ----------
 function initAddQuestionForm() {
   const form = document.getElementById("question-form");
