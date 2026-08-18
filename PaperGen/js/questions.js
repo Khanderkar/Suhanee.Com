@@ -39,6 +39,24 @@ function getCorrectOptionSet(q) {
   return new Set();
 }
 
+// ---------- NOTIFICATIONS ----------
+// A prominent toast (not just a small inline status line) so success/failure
+// is hard to miss, plus a shake animation on failure to draw the eye.
+function showToast(message, type) {
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type === "error" ? "error" : "success"}`;
+  toast.textContent = (type === "error" ? "⚠️ " : "✅ ") + message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
+
+function shakeElement(el) {
+  el.classList.remove("shake-error");
+  void el.offsetWidth; // force reflow so the animation can replay if triggered again quickly
+  el.classList.add("shake-error");
+  setTimeout(() => el.classList.remove("shake-error"), 600);
+}
+
 // ---------- ADD QUESTION FORM ----------
 function initAddQuestionForm() {
   const form = document.getElementById("question-form");
@@ -117,8 +135,12 @@ function initAddQuestionForm() {
     e.preventDefault();
     const result = await performSave(mcqBlock, typeSelect);
     if (result.ok) {
+      showToast(result.wasEditing ? "Question updated!" : "Question saved!", "success");
       exitEditMode(form, mcqBlock, subjectiveBlock);
       if (result.wasEditing) refreshBankList();
+    } else {
+      showToast(result.message || "Could not save — please check the form.", "error");
+      shakeElement(form);
     }
   });
 
@@ -127,6 +149,7 @@ function initAddQuestionForm() {
   document.getElementById("save-another-btn").addEventListener("click", async () => {
     const result = await performSave(mcqBlock, typeSelect);
     if (result.ok) {
+      showToast(result.wasEditing ? "Question updated!" : "Question saved! Ready for the next one.", "success");
       const wasEditing = result.wasEditing;
       editingQuestionId = null;
       document.getElementById("form-heading").textContent = "Add a question";
@@ -140,6 +163,9 @@ function initAddQuestionForm() {
       document.getElementById("q-image").value = "";
       if (wasEditing) refreshBankList();
       document.getElementById("q-text").focus();
+    } else {
+      showToast(result.message || "Could not save — please check the form.", "error");
+      shakeElement(form);
     }
   });
 }
@@ -151,11 +177,15 @@ async function performSave(mcqBlock, typeSelect) {
   const statusEl = document.getElementById("save-status");
   statusEl.textContent = editingQuestionId ? "Updating..." : "Saving...";
 
+  function fail(message) {
+    statusEl.textContent = message;
+    return { ok: false, message };
+  }
+
   try {
     const selection = addQuestionCascade.getSelection();
     if (!selection.board || !selection.grade || !selection.subject || !selection.chapter) {
-      statusEl.textContent = "Please fill in Board, Grade, Subject and Chapter.";
-      return { ok: false };
+      return fail("Please fill in Board, Grade, Subject and Chapter.");
     }
 
     // Persist any brand-new taxonomy values (e.g. a newly typed chapter/topic) first
@@ -169,8 +199,7 @@ async function performSave(mcqBlock, typeSelect) {
     const difficulty = document.getElementById("q-difficulty").value;
 
     if (!questionTextPlain && qTextEl.dataset.required !== "false") {
-      statusEl.textContent = "Please type the question (or switch to a full-question scanned image).";
-      return { ok: false };
+      return fail("Please type the question (or switch to a full-question scanned image).");
     }
 
     const data = {
@@ -200,20 +229,17 @@ async function performSave(mcqBlock, typeSelect) {
       const rawOptions = Array.from(optionEls).map((el) => el.value.trim());
 
       if (!rawOptions[0] || !rawOptions[1]) {
-        statusEl.textContent = "Please fill in at least Options A and B.";
-        return { ok: false };
+        return fail("Please fill in at least Options A and B.");
       }
 
       const correctOriginalIndexes = Array.from(mcqBlock.querySelectorAll(".correct-option-cb:checked")).map((cb) =>
         Number(cb.value)
       );
       if (correctOriginalIndexes.length === 0) {
-        statusEl.textContent = "Please tick at least one correct answer.";
-        return { ok: false };
+        return fail("Please tick at least one correct answer before saving.");
       }
       if (correctOriginalIndexes.some((idx) => !rawOptions[idx])) {
-        statusEl.textContent = "An option marked as correct is empty — fill it in, or untick it.";
-        return { ok: false };
+        return fail("An option marked as correct is empty — fill it in, or untick it.");
       }
 
       // Only keep options that actually have text (C/D are optional), and
@@ -272,8 +298,7 @@ async function performSave(mcqBlock, typeSelect) {
     return { ok: true, wasEditing };
   } catch (err) {
     console.error(err);
-    statusEl.textContent = "Error saving question. See console for details.";
-    return { ok: false };
+    return fail("Error saving question — see the browser console for details.");
   }
 }
 
